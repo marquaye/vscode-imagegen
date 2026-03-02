@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { initWasm } from './imageService';
 import { promptAndStoreApiKey } from './secrets';
-import { GenerateImageTool } from './tool';
+import { EditImageTool, GenerateImageTool } from './tool';
 import { ImageGenPanel } from './webview/panel';
 import { SidebarProvider } from './webview/sidebarProvider';
 import { initEditorTracker } from './editorTracker';
@@ -46,6 +46,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ── 6. Copilot Tool registration ────────────────────────────────────────────
   context.subscriptions.push(
     vscode.lm.registerTool('imagegen_generateImage', new GenerateImageTool(context)),
+  );
+  context.subscriptions.push(
+    vscode.lm.registerTool('imagegen_editImage', new EditImageTool(context)),
   );
 
   // ── 7. Command: Health check ────────────────────────────────────────────────

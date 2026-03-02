@@ -117,7 +117,7 @@ export function getWebviewContent(
       letter-spacing: 0.04em;
     }
 
-    textarea, select, input[type="password"] {
+    textarea, select, input[type="password"], input[type="text"], input[type="file"] {
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
       border: 1px solid var(--vscode-input-border, transparent);
@@ -129,7 +129,20 @@ export function getWebviewContent(
     }
 
     textarea { min-height: 90px; resize: vertical; }
-    textarea:focus, select:focus, input[type="password"]:focus { border-color: var(--vscode-focusBorder); }
+    textarea:focus, select:focus, input[type="password"]:focus, input[type="text"]:focus, input[type="file"]:focus { border-color: var(--vscode-focusBorder); }
+
+    .input-image-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #input-image-file {
+      width: 100%;
+      padding: 7px 8px;
+      min-height: 34px;
+    }
 
     .row {
       display: grid;
@@ -197,6 +210,19 @@ export function getWebviewContent(
     }
 
     #generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #abort-btn {
+      margin-top: 8px;
+      padding: 8px 14px;
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      width: 100%;
+      border: 1px solid var(--vscode-input-border, transparent);
+      display: none;
+    }
+
+    #abort-btn.show { display: inline-flex; }
+    #abort-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .icon-btn {
       width: 34px;
@@ -380,8 +406,24 @@ export function getWebviewContent(
     </div>
 
     <div class="form-group">
-      <label for="prompt">Prompt</label>
+      <label for="operation">Mode</label>
+      <select id="operation">
+        <option value="generate" selected>Generate from text</option>
+        <option value="edit">Edit existing image</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label id="prompt-label" for="prompt">Prompt</label>
       <textarea id="prompt" placeholder="Describe the image you want to generate…"></textarea>
+    </div>
+
+    <div id="input-image-group" class="form-group hidden">
+      <label for="input-image">Input Image</label>
+      <textarea id="input-image" placeholder="Path, URL, data URL, or Markdown image snippet"></textarea>
+      <div class="input-image-row">
+        <input id="input-image-file" type="file" accept="image/*" />
+      </div>
     </div>
 
     <div class="row">
@@ -401,6 +443,16 @@ export function getWebviewContent(
         </select>
       </div>
 
+      <div id="provider-quality-group" class="form-group hidden">
+        <label for="provider-quality">Model Quality</label>
+        <select id="provider-quality">
+          <option value="auto">auto</option>
+          <option value="low">low</option>
+          <option value="medium">medium</option>
+          <option value="high" selected>high</option>
+        </select>
+      </div>
+
       <div class="form-group">
         <label for="quality-slider">WebP Quality</label>
         <div class="quality-row">
@@ -411,6 +463,7 @@ export function getWebviewContent(
     </div>
 
     <button id="generate-btn">Generate Image</button>
+    <button id="abort-btn" type="button">Abort</button>
 
     <div id="loading-container">
       <div class="loading-row">
@@ -459,13 +512,21 @@ export function getWebviewContent(
     const providerInlineKeyEl = document.getElementById('provider-inline-key');
     const providerInlineKeyInputEl = document.getElementById('provider-inline-key-input');
     const providerInlineSaveBtnEl = document.getElementById('provider-inline-save-btn');
+    const operationEl = document.getElementById('operation');
+    const promptLabelEl = document.getElementById('prompt-label');
     const promptEl = document.getElementById('prompt');
+    const inputImageGroupEl = document.getElementById('input-image-group');
+    const inputImageEl = document.getElementById('input-image');
+    const inputImageFileEl = document.getElementById('input-image-file');
     const aspectEl = document.getElementById('aspect-ratio');
     const resolutionGroupEl = document.getElementById('resolution-group');
     const resolutionEl = document.getElementById('resolution');
+    const providerQualityGroupEl = document.getElementById('provider-quality-group');
+    const providerQualityEl = document.getElementById('provider-quality');
     const qualitySlider = document.getElementById('quality-slider');
     const qualityDisplay = document.getElementById('quality-display');
     const generateBtn = document.getElementById('generate-btn');
+    const abortBtn = document.getElementById('abort-btn');
     const insertBtn = document.getElementById('insert-btn');
     const revealBtn = document.getElementById('reveal-btn');
     const openInEditorBtn = document.getElementById('open-in-editor-btn');
@@ -489,8 +550,12 @@ export function getWebviewContent(
     let generationStartedAt = 0;
     let generationTicker = null;
     let currentEstimate = null;
+    let currentRequestedResolution = null;
 
     const NANO_BANANA_2_PROVIDER_ID = 'gemini-3.1-flash-image-preview';
+    const OPENAI_PROVIDER_ID = 'gpt-image-1.5';
+    const NANO_BANANA_2_RESOLUTIONS = ['1K', '2K', '0.5K'];
+    const OPENAI_RESOLUTIONS = ['auto', '1024x1024', '1536x1024', '1024x1536'];
     const NANO_BANANA_2_COSTS = {
       '0.5K': { tokens: 747, usd: 0.045 },
       '1K': { tokens: 1120, usd: 0.067 },
@@ -507,6 +572,10 @@ export function getWebviewContent(
 
     function selectedProviderKeyName() {
       return PROVIDER_KEY_MAP[providerEl.value];
+    }
+
+    function isEditMode() {
+      return operationEl.value === 'edit';
     }
 
     function setViewMode() {
@@ -536,8 +605,42 @@ export function getWebviewContent(
       generateBtn.disabled = !hasKey || isGenerating;
     }
 
+    function updateOperationUi() {
+      const editMode = isEditMode();
+
+      inputImageGroupEl.classList.toggle('hidden', !editMode);
+      promptLabelEl.textContent = editMode ? 'Edit Instructions' : 'Prompt';
+      promptEl.placeholder = editMode
+        ? 'Describe how you want to modify the input image…'
+        : 'Describe the image you want to generate…';
+      generateBtn.textContent = editMode ? 'Edit Image' : 'Generate Image';
+
+      updateResolutionVisibility();
+      updateCostPreview();
+      updateKeyStatus();
+    }
+
     function providerSupportsResolution(providerId) {
-      return providerId === NANO_BANANA_2_PROVIDER_ID;
+      return providerId === NANO_BANANA_2_PROVIDER_ID || providerId === OPENAI_PROVIDER_ID;
+    }
+
+    function providerSupportsOutputQuality(providerId) {
+      return providerId === OPENAI_PROVIDER_ID;
+    }
+
+    function setResolutionOptionsForProvider(providerId) {
+      const values = providerId === OPENAI_PROVIDER_ID
+        ? OPENAI_RESOLUTIONS
+        : NANO_BANANA_2_RESOLUTIONS;
+
+      const existing = resolutionEl.value;
+      resolutionEl.innerHTML = values
+        .map((value) => '<option value="' + value + '">' + value + '</option>')
+        .join('');
+
+      if (values.includes(existing)) {
+        resolutionEl.value = existing;
+      }
     }
 
     function formatUsd(value) {
@@ -548,7 +651,11 @@ export function getWebviewContent(
     }
 
     function getCurrentEstimate() {
-      if (!providerSupportsResolution(providerEl.value)) {
+      if (isEditMode()) {
+        return null;
+      }
+
+      if (providerEl.value !== NANO_BANANA_2_PROVIDER_ID) {
         return null;
       }
 
@@ -582,13 +689,21 @@ export function getWebviewContent(
     }
 
     function updateResolutionVisibility() {
-      const supported = providerSupportsResolution(providerEl.value);
+      const supported = providerSupportsResolution(providerEl.value) && !isEditMode();
+      if (supported) {
+        setResolutionOptionsForProvider(providerEl.value);
+      }
       if (supported) {
         resolutionGroupEl.classList.remove('hidden');
       } else {
         resolutionGroupEl.classList.add('hidden');
       }
       updateCostPreview();
+    }
+
+    function updateProviderQualityVisibility() {
+      const supported = providerSupportsOutputQuality(providerEl.value);
+      providerQualityGroupEl.classList.toggle('hidden', !supported);
     }
 
     function formatElapsed(ms) {
@@ -625,13 +740,17 @@ export function getWebviewContent(
         generationStartedAt = Date.now();
         elapsedTimeEl.textContent = '0.0s';
         loadingCt.classList.add('show');
+        abortBtn.classList.add('show');
+        abortBtn.disabled = false;
         stopGenerationTicker();
         generationTicker = setInterval(() => {
           elapsedTimeEl.textContent = formatElapsed(Date.now() - generationStartedAt);
-        }, 100);
+        }, 250);
       } else {
         stopGenerationTicker();
         loadingCt.classList.remove('show');
+        abortBtn.classList.remove('show');
+        abortBtn.disabled = true;
       }
 
       updateKeyStatus();
@@ -651,8 +770,29 @@ export function getWebviewContent(
     providerEl.addEventListener('change', () => {
       updateKeyStatus();
       updateResolutionVisibility();
+      updateProviderQualityVisibility();
     });
+    operationEl.addEventListener('change', updateOperationUi);
     resolutionEl.addEventListener('change', updateCostPreview);
+
+    inputImageFileEl.addEventListener('change', () => {
+      const file = inputImageFileEl.files && inputImageFileEl.files[0];
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          inputImageEl.value = reader.result;
+          setStatus('Input image loaded from file.');
+        }
+      };
+      reader.onerror = () => {
+        setStatus('Failed to read selected image file.', true);
+      };
+      reader.readAsDataURL(file);
+    });
 
     providerInlineSaveBtnEl.addEventListener('click', () => {
       saveKey(selectedProviderKeyName(), providerInlineKeyInputEl.value);
@@ -676,13 +816,23 @@ export function getWebviewContent(
         return;
       }
 
+      const editMode = isEditMode();
+      const inputImage = inputImageEl.value.trim();
+      if (editMode && !inputImage) {
+        setStatus('Please provide an input image source.', true);
+        return;
+      }
+
       generateBtn.disabled = true;
       previewCt.style.display = 'none';
       setGeneratingState(true);
-      setStatus('Generating… this may take a few seconds.');
+      setStatus(editMode ? 'Editing… this may take a few seconds.' : 'Generating… this may take a few seconds.');
       currentMarkdownLink = '';
       currentAbsolutePath = '';
       currentEstimate = getCurrentEstimate();
+      currentRequestedResolution = providerSupportsResolution(providerEl.value) && !isEditMode()
+        ? resolutionEl.value
+        : null;
       resultElapsedEl.textContent = '-';
       resultResolutionEl.textContent = '-';
       resultCostEl.textContent = '-';
@@ -690,14 +840,37 @@ export function getWebviewContent(
       sizeBeforeEl.textContent = '-';
       sizeAfterEl.textContent = '-';
 
-      vscode.postMessage({
-        type: 'generate',
-        prompt,
-        provider: providerEl.value,
-        aspectRatio: aspectEl.value,
-        resolution: providerSupportsResolution(providerEl.value) ? resolutionEl.value : undefined,
-        quality: parseInt(qualitySlider.value, 10),
-      });
+      if (editMode) {
+        vscode.postMessage({
+          type: 'edit',
+          prompt,
+          inputImage,
+          provider: providerEl.value,
+          aspectRatio: aspectEl.value,
+          providerQuality: providerSupportsOutputQuality(providerEl.value) ? providerQualityEl.value : undefined,
+          quality: parseInt(qualitySlider.value, 10),
+        });
+      } else {
+        vscode.postMessage({
+          type: 'generate',
+          prompt,
+          provider: providerEl.value,
+          aspectRatio: aspectEl.value,
+          resolution: providerSupportsResolution(providerEl.value) ? resolutionEl.value : undefined,
+          providerQuality: providerSupportsOutputQuality(providerEl.value) ? providerQualityEl.value : undefined,
+          quality: parseInt(qualitySlider.value, 10),
+        });
+      }
+    });
+
+    abortBtn.addEventListener('click', () => {
+      if (!isGenerating) {
+        return;
+      }
+
+      abortBtn.disabled = true;
+      setStatus('Cancelling…');
+      vscode.postMessage({ type: 'abort' });
     });
 
     insertBtn.addEventListener('click', () => {
@@ -769,6 +942,9 @@ export function getWebviewContent(
         if (currentEstimate) {
           resultResolutionEl.textContent = currentEstimate.resolutionKey;
           resultTokensEl.textContent = String(currentEstimate.tokens);
+        } else if (currentRequestedResolution) {
+          resultResolutionEl.textContent = currentRequestedResolution;
+          resultTokensEl.textContent = 'Not available';
         } else {
           resultResolutionEl.textContent = 'Not available';
           resultTokensEl.textContent = 'Not available';
@@ -776,6 +952,9 @@ export function getWebviewContent(
         sizeBeforeEl.textContent = formatBytes(msg.originalBytes);
         sizeAfterEl.textContent = formatBytes(msg.optimizedBytes);
         previewCt.style.display = 'block';
+      } else if (msg.type === 'cancelled') {
+        setStatus('Request cancelled.');
+        updateKeyStatus();
       } else if (msg.type === 'error') {
         setStatus(msg.message, true);
         updateKeyStatus();
@@ -789,7 +968,9 @@ export function getWebviewContent(
 
     setViewMode();
     updateKeyStatus();
+    updateOperationUi();
     updateResolutionVisibility();
+    updateProviderQualityVisibility();
   </script>
 </body>
 </html>`;

@@ -32,6 +32,10 @@ export function toUserErrorMessage(error: unknown): string {
     return 'Request cancelled.';
   }
 
+  if (lower.includes('timed out') || lower.includes('timeout')) {
+    return 'Request timed out. Try again or increase imagegen.requestTimeoutMs in settings.';
+  }
+
   if (lower.includes('no api key set')) {
     return 'API key is missing for the selected provider. Run “ImageGen: Set API Key”.';
   }
@@ -63,6 +67,10 @@ export function toUserErrorMessage(error: unknown): string {
 
   if (lower.includes('no workspace folder is open')) {
     return 'Open a workspace folder before generating images.';
+  }
+
+  if (lower.includes('relative input image paths require an open workspace')) {
+    return 'For edit mode without a workspace, use an absolute file path, URL, or data URL.';
   }
 
   if (lower.includes('unsupported image type')) {

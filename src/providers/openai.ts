@@ -1,8 +1,9 @@
-import type { ImageGenerationOptions, ImageProvider, RawImageData } from './types';
+import type { ImageEditOptions, ImageGenerationOptions, ImageProvider, RawImageData } from './types';
 import { aspectRatioToOpenAISize } from './types';
 import { fetchWithRetry } from '../utils/network';
 
 const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
+const OPENAI_IMAGE_EDIT_URL = 'https://api.openai.com/v1/images/edits';
 
 export const openAIProvider: ImageProvider = {
   id: 'gpt-image-1.5',
@@ -14,9 +15,8 @@ export const openAIProvider: ImageProvider = {
     const body = {
       model: 'gpt-image-1.5',
       prompt: opts.prompt,
-      response_format: 'b64_json',
-      size: aspectRatioToOpenAISize(opts.aspectRatio),
-      quality: 'high',
+      size: opts.size ?? aspectRatioToOpenAISize(opts.aspectRatio),
+      quality: opts.outputQuality ?? 'high',
       n: 1,
     };
 
@@ -28,7 +28,7 @@ export const openAIProvider: ImageProvider = {
       },
       body: JSON.stringify(body),
       signal: opts.signal,
-    }, { signal: opts.signal });
+    }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
 
     if (!res.ok) {
       const text = await res.text();
@@ -36,20 +36,87 @@ export const openAIProvider: ImageProvider = {
     }
 
     const json = (await res.json()) as {
-      data?: { b64_json?: string }[];
+      data?: { b64_json?: string; url?: string }[];
     };
 
-    const b64 = json?.data?.[0]?.b64_json;
-    if (!b64) {
+    const item = json?.data?.[0];
+    let rawBuffer: Buffer;
+
+    if (item?.b64_json) {
+      rawBuffer = Buffer.from(item.b64_json, 'base64');
+    } else if (item?.url) {
+      const imgRes = await fetchWithRetry(
+        item.url,
+        { signal: opts.signal },
+        { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs },
+      );
+      if (!imgRes.ok) {
+        throw new Error(`Failed to download image from OpenAI URL: ${imgRes.status}`);
+      }
+      const arrayBuffer = await imgRes.arrayBuffer();
+      rawBuffer = Buffer.from(arrayBuffer);
+    } else {
       throw new Error('OpenAI API returned no image data.');
     }
 
-    const rawBuffer = Buffer.from(b64, 'base64');
+    return {
+      mimeType: 'image/png',
+      rawBuffer,
+    };
+  },
+
+  async edit(apiKey: string, opts: ImageEditOptions): Promise<RawImageData> {
+    const form = new FormData();
+    form.append('model', 'gpt-image-1.5');
+    form.append('prompt', opts.prompt);
+    form.append('size', opts.size ?? aspectRatioToOpenAISize(opts.aspectRatio));
+    form.append('quality', opts.outputQuality ?? 'high');
+    form.append('n', '1');
+    form.append(
+      'image',
+      new Blob([opts.inputImage.rawBuffer], { type: opts.inputImage.mimeType }),
+      'input-image',
+    );
+
+    const res = await fetchWithRetry(OPENAI_IMAGE_EDIT_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: form,
+      signal: opts.signal,
+    }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`OpenAI API edit error ${res.status}: ${text}`);
+    }
+
+    const json = (await res.json()) as {
+      data?: { b64_json?: string; url?: string }[];
+    };
+
+    const item = json?.data?.[0];
+    let rawBuffer: Buffer;
+
+    if (item?.b64_json) {
+      rawBuffer = Buffer.from(item.b64_json, 'base64');
+    } else if (item?.url) {
+      const imgRes = await fetchWithRetry(
+        item.url,
+        { signal: opts.signal },
+        { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs },
+      );
+      if (!imgRes.ok) {
+        throw new Error(`Failed to download edited image from OpenAI URL: ${imgRes.status}`);
+      }
+      const arrayBuffer = await imgRes.arrayBuffer();
+      rawBuffer = Buffer.from(arrayBuffer);
+    } else {
+      throw new Error('OpenAI API returned no edited image data.');
+    }
 
     return {
-      data: new Uint8Array(rawBuffer),
-      width: 0,
-      height: 0,
       mimeType: 'image/png',
       rawBuffer,
     };

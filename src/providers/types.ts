@@ -3,16 +3,24 @@
 export interface ImageGenerationOptions {
   prompt: string;
   aspectRatio: string;
+  size?: string;
+  outputQuality?: string;
   quality: number;
+  requestTimeoutMs?: number;
   signal?: AbortSignal;
 }
 
-/** Raw response from a provider: decoded pixel data ready for WebP encoding. */
+export interface InputImageData {
+  rawBuffer: Buffer;
+  mimeType: string;
+}
+
+export interface ImageEditOptions extends ImageGenerationOptions {
+  inputImage: InputImageData;
+}
+
+/** Raw response from a provider image API. */
 export interface RawImageData {
-  /** RGBA pixel buffer */
-  data: Uint8Array;
-  width: number;
-  height: number;
   /** Original mime type returned by the provider */
   mimeType: string;
   /** Original base64-encoded image bytes from the API (before pixel decoding) */
@@ -28,6 +36,7 @@ export interface ImageProvider {
   /** Human-readable label for the API key prompt */
   apiKeyLabel: string;
   generate(apiKey: string, opts: ImageGenerationOptions): Promise<RawImageData>;
+  edit?(apiKey: string, opts: ImageEditOptions): Promise<RawImageData>;
 }
 
 // ─── Provider IDs ────────────────────────────────────────────────────────────
@@ -91,19 +100,19 @@ export const PROVIDER_USD_PER_1K_IMAGES: Record<ProviderId, number> = {
 export const PROVIDER_META: ProviderMeta[] = [
   {
     id: 'gemini-3.1-flash-image-preview',
-    label: 'Nano Banana 2 — Gemini 3.1 Flash Image Preview',
+    label: 'Nano Banana 2',
     detail: 'Google · $67/1k imgs (default)',
     apiKeyName: 'gemini-api-key',
   },
   {
     id: 'gemini-3-pro-image-preview',
-    label: 'Nano Banana Pro — Gemini 3 Pro Image',
+    label: 'Nano Banana Pro',    
     detail: 'Google · $134/1k imgs',
     apiKeyName: 'gemini-api-key',
   },
   {
     id: 'gpt-image-1.5',
-    label: 'GPT Image 1.5 (high)',
+    label: 'GPT Image 1.5',
     detail: 'OpenAI · $133/1k imgs',
     apiKeyName: 'openai-api-key',
   },
@@ -122,7 +131,7 @@ export const PROVIDER_META: ProviderMeta[] = [
   {
     id: 'seedream-4.0',
     label: 'Seedream 4.0',
-    detail: 'ByteDance Seed via OpenRouter · $30/1k imgs',
+    detail: 'ByteDance via OpenRouter · $30/1k imgs',
     apiKeyName: 'openrouter-api-key',
   },
 ];
@@ -134,14 +143,29 @@ export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 
 /** Map a common aspect-ratio string to an OpenAI-compatible size string */
 export function aspectRatioToOpenAISize(ar: string): string {
-  const map: Record<string, string> = {
-    '1:1': '1024x1024',
-    '16:9': '1792x1024',
-    '9:16': '1024x1792',
-    '3:2': '1536x1024',
-    '2:3': '1024x1536',
-    '4:3': '1365x1024',
-    '3:4': '1024x1365',
-  };
-  return map[ar] ?? '1024x1024';
+  if (ar === '1:1') {
+    return '1024x1024';
+  }
+
+  const parts = ar.split(':');
+  if (parts.length !== 2) {
+    return 'auto';
+  }
+
+  const w = Number(parts[0]);
+  const h = Number(parts[1]);
+
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+    return 'auto';
+  }
+
+  if (w > h) {
+    return '1536x1024';
+  }
+
+  if (h > w) {
+    return '1024x1536';
+  }
+
+  return '1024x1024';
 }

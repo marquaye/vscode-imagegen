@@ -123,6 +123,20 @@
           "minimum": 0,
           "maximum": 100,
           "description": "WebP compression quality (0–100). Used by the Copilot tool; the manual panel has its own quality slider."
+        },
+        "imagegen.requestTimeoutMs": {
+          "type": "number",
+          "default": 45000,
+          "minimum": 5000,
+          "maximum": 180000,
+          "description": "Per-request timeout in milliseconds for provider API calls."
+        },
+        "imagegen.maxInputImageMB": {
+          "type": "number",
+          "default": 12,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum allowed input image size in MB for image-edit operations."
         }
       }
     },
@@ -150,6 +164,35 @@
             }
           },
           "required": ["prompt"]
+        }
+      },
+      {
+        "name": "imagegen_editImage",
+        "displayName": "Edit Image",
+        "userDescription": "Edits an existing image using an instruction prompt and saves the result as an optimized .webp file.",
+        "modelDescription": "Use this tool when the user asks to modify, transform, retouch, or restyle an existing image. Accept an input image source (workspace path, absolute path, URL, data URL, or Markdown image snippet), apply the edit prompt with the configured provider, and return a ready-to-paste Markdown image link (![alt](path.webp)).",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "editImage",
+        "icon": "$(wand)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "description": "Detailed instruction describing how to modify the input image."
+            },
+            "inputImage": {
+              "type": "string",
+              "description": "Image source to edit: workspace-relative path, absolute path, URL, data URL, or markdown image snippet ![alt](path)."
+            },
+            "aspectRatio": {
+              "type": "string",
+              "description": "Optional target aspect ratio for the edited output.",
+              "enum": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
+              "default": "16:9"
+            }
+          },
+          "required": ["prompt", "inputImage"]
         }
       }
     ]

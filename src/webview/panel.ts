@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { generateAndSaveImage, getConfig } from '../imageService';
+import { editAndSaveImage, generateAndSaveImage, getConfig } from '../imageService';
 import { API_KEY_NAMES, type ApiKeyName, type ProviderId, PROVIDER_IDS, type KeyStatuses } from '../providers';
 import { getLastActiveEditor } from '../editorTracker';
 import { readKeyStatuses, storeApiKey } from '../secrets';
@@ -15,6 +15,17 @@ interface GenerateMessage {
   provider: string;
   aspectRatio: string;
   resolution?: string;
+  providerQuality?: string;
+  quality: number;
+}
+
+interface EditMessage {
+  type: 'edit';
+  prompt: string;
+  inputImage: string;
+  provider: string;
+  aspectRatio: string;
+  providerQuality?: string;
   quality: number;
 }
 
@@ -39,12 +50,18 @@ interface SaveApiKeyMessage {
   keyValue: string;
 }
 
+interface AbortMessage {
+  type: 'abort';
+}
+
 type WebviewMessage =
   | GenerateMessage
+  | EditMessage
   | InsertMessage
   | RevealFileMessage
   | OpenFileInEditorMessage
-  | SaveApiKeyMessage;
+  | SaveApiKeyMessage
+  | AbortMessage;
 
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +71,7 @@ export class ImageGenPanel {
   private readonly panel: vscode.WebviewPanel;
   private readonly context: vscode.ExtensionContext;
   private readonly disposables: vscode.Disposable[] = [];
+  private activeRequestAbortController?: AbortController;
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -116,6 +134,8 @@ export class ImageGenPanel {
   private async handleMessage(message: WebviewMessage): Promise<void> {
     if (message.type === 'generate') {
       await this.handleGenerate(message);
+    } else if (message.type === 'edit') {
+      await this.handleEdit(message);
     } else if (message.type === 'insert') {
       await this.handleInsert(message);
     } else if (message.type === 'revealFile') {
@@ -127,6 +147,8 @@ export class ImageGenPanel {
       void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(message.absolutePath));
     } else if (message.type === 'saveApiKey') {
       await this.handleSaveApiKey(message);
+    } else if (message.type === 'abort') {
+      this.activeRequestAbortController?.abort();
     }
   }
 
@@ -150,17 +172,23 @@ export class ImageGenPanel {
   }
 
   private async handleGenerate(msg: GenerateMessage): Promise<void> {
+    const abortController = new AbortController();
+    this.activeRequestAbortController = abortController;
+
     try {
       const providerId = this.validateProvider(msg.provider);
 
       const result = await generateAndSaveImage(this.context, {
         prompt: msg.prompt,
         aspectRatio: msg.aspectRatio,
+        size: msg.resolution,
+        outputQuality: msg.providerQuality,
         quality: msg.quality,
         providerId,
+        signal: abortController.signal,
       });
 
-      const rawBuffer = fs.readFileSync(result.absolutePath);
+      const rawBuffer = await fs.promises.readFile(result.absolutePath);
       const base64 = rawBuffer.toString('base64');
 
       void this.panel.webview.postMessage({
@@ -175,8 +203,61 @@ export class ImageGenPanel {
       });
     } catch (err: unknown) {
       logDetailedError('Panel generation failed', err);
+      if (abortController.signal.aborted || isAbortLikeError(err)) {
+        void this.panel.webview.postMessage({ type: 'cancelled' });
+        return;
+      }
       const message = toUserErrorMessage(err);
       void this.panel.webview.postMessage({ type: 'error', message });
+    } finally {
+      if (this.activeRequestAbortController === abortController) {
+        this.activeRequestAbortController = undefined;
+      }
+    }
+  }
+
+  private async handleEdit(msg: EditMessage): Promise<void> {
+    const abortController = new AbortController();
+    this.activeRequestAbortController = abortController;
+
+    try {
+      const providerId = this.validateProvider(msg.provider);
+
+      const result = await editAndSaveImage(this.context, {
+        prompt: msg.prompt,
+        inputImageSource: msg.inputImage,
+        aspectRatio: msg.aspectRatio,
+        outputQuality: msg.providerQuality,
+        quality: msg.quality,
+        providerId,
+        signal: abortController.signal,
+      });
+
+      const rawBuffer = await fs.promises.readFile(result.absolutePath);
+      const base64 = rawBuffer.toString('base64');
+
+      void this.panel.webview.postMessage({
+        type: 'result',
+        base64,
+        absolutePath: result.absolutePath,
+        relativePath: result.relativePath,
+        markdownLink: result.markdownLink,
+        originalBytes: result.originalBytes,
+        optimizedBytes: result.optimizedBytes,
+        metrics: result.metrics,
+      });
+    } catch (err: unknown) {
+      logDetailedError('Panel image edit failed', err);
+      if (abortController.signal.aborted || isAbortLikeError(err)) {
+        void this.panel.webview.postMessage({ type: 'cancelled' });
+        return;
+      }
+      const message = toUserErrorMessage(err);
+      void this.panel.webview.postMessage({ type: 'error', message });
+    } finally {
+      if (this.activeRequestAbortController === abortController) {
+        this.activeRequestAbortController = undefined;
+      }
     }
   }
 
@@ -220,6 +301,19 @@ export class ImageGenPanel {
       d.dispose();
     }
   }
+}
+
+function isAbortLikeError(err: unknown): boolean {
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException && err.name === 'AbortError') {
+    return true;
+  }
+
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    return msg.includes('abort') || msg.includes('cancel');
+  }
+
+  return false;
 }
 
 function isApiKeyName(value: string): value is ApiKeyName {

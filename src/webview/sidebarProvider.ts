@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { generateAndSaveImage, getConfig } from '../imageService';
+import { editAndSaveImage, generateAndSaveImage, getConfig } from '../imageService';
 import { API_KEY_NAMES, type ApiKeyName, type ProviderId, PROVIDER_IDS } from '../providers';
 import { getLastActiveEditor } from '../editorTracker';
 import { readKeyStatuses, storeApiKey } from '../secrets';
@@ -15,6 +15,17 @@ interface GenerateMessage {
   provider: string;
   aspectRatio: string;
   resolution?: string;
+  providerQuality?: string;
+  quality: number;
+}
+
+interface EditMessage {
+  type: 'edit';
+  prompt: string;
+  inputImage: string;
+  provider: string;
+  aspectRatio: string;
+  providerQuality?: string;
   quality: number;
 }
 
@@ -41,6 +52,7 @@ interface SaveApiKeyMessage {
 
 type WebviewMessage =
   | GenerateMessage
+  | EditMessage
   | InsertMessage
   | RevealFileMessage
   | OpenFileInEditorMessage
@@ -103,6 +115,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private async handleMessage(message: WebviewMessage): Promise<void> {
     if (message.type === 'generate') {
       await this.handleGenerate(message);
+    } else if (message.type === 'edit') {
+      await this.handleEdit(message);
     } else if (message.type === 'insert') {
       await this.handleInsert(message);
     } else if (message.type === 'revealFile') {
@@ -143,11 +157,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       const result = await generateAndSaveImage(this.context, {
         prompt: msg.prompt,
         aspectRatio: msg.aspectRatio,
+        size: msg.resolution,
+        outputQuality: msg.providerQuality,
         quality: msg.quality,
         providerId,
       });
 
-      const rawBuffer = fs.readFileSync(result.absolutePath);
+      const rawBuffer = await fs.promises.readFile(result.absolutePath);
       const base64 = rawBuffer.toString('base64');
 
       void this._view?.webview.postMessage({
@@ -162,6 +178,39 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       });
     } catch (err: unknown) {
       logDetailedError('Sidebar generation failed', err);
+      const message = toUserErrorMessage(err);
+      void this._view?.webview.postMessage({ type: 'error', message });
+    }
+  }
+
+  private async handleEdit(msg: EditMessage): Promise<void> {
+    try {
+      const providerId = this.validateProvider(msg.provider);
+
+      const result = await editAndSaveImage(this.context, {
+        prompt: msg.prompt,
+        inputImageSource: msg.inputImage,
+        aspectRatio: msg.aspectRatio,
+        outputQuality: msg.providerQuality,
+        quality: msg.quality,
+        providerId,
+      });
+
+      const rawBuffer = await fs.promises.readFile(result.absolutePath);
+      const base64 = rawBuffer.toString('base64');
+
+      void this._view?.webview.postMessage({
+        type: 'result',
+        base64,
+        absolutePath: result.absolutePath,
+        relativePath: result.relativePath,
+        markdownLink: result.markdownLink,
+        originalBytes: result.originalBytes,
+        optimizedBytes: result.optimizedBytes,
+        metrics: result.metrics,
+      });
+    } catch (err: unknown) {
+      logDetailedError('Sidebar image edit failed', err);
       const message = toUserErrorMessage(err);
       void this._view?.webview.postMessage({ type: 'error', message });
     }

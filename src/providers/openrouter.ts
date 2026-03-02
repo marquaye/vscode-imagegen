@@ -45,7 +45,7 @@ function makeOpenRouterProvider(
         },
         body: JSON.stringify(body),
         signal: opts.signal,
-      }, { signal: opts.signal });
+      }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
 
       if (!res.ok) {
         const text = await res.text();
@@ -63,7 +63,11 @@ function makeOpenRouterProvider(
         rawBuffer = Buffer.from(item.b64_json, 'base64');
       } else if (item?.url) {
         // Some OpenRouter models return a URL instead of base64
-        const imgRes = await fetchWithRetry(item.url, { signal: opts.signal }, { signal: opts.signal });
+        const imgRes = await fetchWithRetry(
+          item.url,
+          { signal: opts.signal },
+          { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs },
+        );
         if (!imgRes.ok) {
           throw new Error(`Failed to download image from OpenRouter URL: ${imgRes.status}`);
         }
@@ -74,12 +78,13 @@ function makeOpenRouterProvider(
       }
 
       return {
-        data: new Uint8Array(rawBuffer),
-        width: 0,
-        height: 0,
         mimeType: 'image/png',
         rawBuffer,
       };
+    },
+
+    async edit(): Promise<RawImageData> {
+      throw new Error(`${displayName} does not currently support image-to-image editing in ImageGen.`);
     },
   };
 }
