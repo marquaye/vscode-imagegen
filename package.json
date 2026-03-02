@@ -1,0 +1,175 @@
+{
+  "name": "vscode-imagegen",
+  "displayName": "ImageGen",
+  "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code with GitHub Copilot integration.",
+  "version": "1.0.1",
+  "license": "MIT",
+  "publisher": "marquaye",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marquaye/vscode-imagegen.git"
+  },
+  "homepage": "https://github.com/marquaye/vscode-imagegen#readme",
+  "bugs": {
+    "url": "https://github.com/marquaye/vscode-imagegen/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "image generation",
+    "gemini",
+    "openai",
+    "flux",
+    "copilot",
+    "webp"
+  ],
+  "icon": "images/icon.png",
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "imagegen-sidebar",
+          "title": "ImageGen",
+          "icon": "images/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "imagegen-sidebar": [
+        {
+          "type": "webview",
+          "id": "imagegen.sidebarView",
+          "name": "ImageGen",
+          "icon": "images/sidebar-icon.svg",
+          "contextualTitle": "ImageGen"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "imagegen.setApiKey",
+        "title": "ImageGen: Set API Key",
+        "icon": "$(key)"
+      },
+      {
+        "command": "imagegen.runHealthCheck",
+        "title": "ImageGen: Run Health Check",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "imagegen.openPanel",
+        "title": "ImageGen: Open in Editor Panel",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "imagegen.setApiKey",
+          "when": "view == imagegen.sidebarView",
+          "group": "navigation"
+        },
+        {
+          "command": "imagegen.openPanel",
+          "when": "view == imagegen.sidebarView",
+          "group": "navigation"
+        },
+        {
+          "command": "imagegen.runHealthCheck",
+          "when": "view == imagegen.sidebarView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ImageGen",
+      "properties": {
+        "imagegen.provider": {
+          "type": "string",
+          "default": "gemini-3.1-flash-image-preview",
+          "enum": [
+            "gemini-3.1-flash-image-preview",
+            "gemini-3-pro-image-preview",
+            "gpt-image-1.5",
+            "flux-2-max",
+            "flux-2-pro",
+            "seedream-4.0"
+          ],
+          "enumDescriptions": [
+            "Google — Nano Banana 2 (Gemini 3.1 Flash Image Preview) · $67/1k imgs",
+            "Google — Nano Banana Pro (Gemini 3 Pro Image) · $134/1k imgs",
+            "OpenAI — GPT Image 1.5 (high) · $133/1k imgs",
+            "Black Forest Labs — FLUX.2 [max] · $70/1k imgs",
+            "Black Forest Labs — FLUX.2 [pro] · $30/1k imgs",
+            "ByteDance Seed — Seedream 4.0 · $30/1k imgs"
+          ],
+          "description": "The image generation provider and model to use."
+        },
+        "imagegen.outputDirectory": {
+          "type": "string",
+          "default": "assets/images",
+          "description": "Workspace-relative folder where generated .webp images are saved."
+        },
+        "imagegen.webpQuality": {
+          "type": "number",
+          "default": 80,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "WebP compression quality (0–100). Used by the Copilot tool; the manual panel has its own quality slider."
+        }
+      }
+    },
+    "languageModelTools": [
+      {
+        "name": "imagegen_generateImage",
+        "displayName": "Generate Image",
+        "userDescription": "Generates an AI image from a text prompt using the configured provider (Gemini, OpenAI, FLUX, Seedream) and saves it as an optimized .webp file.",
+        "modelDescription": "Use this tool when the user asks to create, generate, draw, illustrate, or visualize any image — for example a blog post header, a documentation diagram, a logo concept, a banner, or any decorative illustration. The tool generates an image from a text description and returns a ready-to-paste Markdown image link (![alt](path.webp)) referencing the saved file.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "generateImage",
+        "icon": "$(image)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "description": "Detailed text description of the image to generate. Be specific about style, subject, colors, and mood."
+            },
+            "aspectRatio": {
+              "type": "string",
+              "description": "Optional aspect ratio for the image.",
+              "enum": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
+              "default": "16:9"
+            }
+          },
+          "required": ["prompt"]
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "build": "bun run build.ts",
+    "watch": "bun run build.ts --watch",
+    "vscode:prepublish": "bun run build.ts --production",
+    "package": "bunx @vscode/vsce package"
+  },
+  "dependencies": {
+    "@jsquash/webp": "^1.5.0",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/jpeg-js": "^0.3.7",
+    "@types/node": "^22.0.0",
+    "@types/pngjs": "^6.0.4",
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,14 @@
+.vscode/**
+.vscode-test/**
+src/**
+build.ts
+tsconfig.json
+.gitignore
+scripts/**
+**/*.map
+# Exclude all of node_modules except the packages we ship (WASM + runtime deps)
+node_modules/**
+!node_modules/@jsquash/**
+!node_modules/wasm-feature-detect/**
+!node_modules/jpeg-js/**
+!node_modules/pngjs/**
