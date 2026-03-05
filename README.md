@@ -1,6 +1,10 @@
 # ImageGen for VS Code
 
-Generate and insert optimized images directly into your workspace using multiple state-of-the-art AI image generation models. Fully integrated with GitHub Copilot Chat for a seamless, AI-driven developer workflow.
+ImageGen gives VS Code agents a native image generation capability inside your editor.
+
+Before this extension, Copilot agents could write and edit code but could not natively generate project images as part of the same workflow. ImageGen adds that missing capability as a first-class tool, so agents can generate, optimize, and insert images directly into your repo. It also includes a manual UI for direct image generation and editing when you want full control.
+
+In short: ImageGen turns image generation into a native VS Code skill for both agents and humans.
 
 ## Supported Providers
 
@@ -15,11 +19,12 @@ Generate and insert optimized images directly into your workspace using multiple
 
 ## Features
 
-- **GitHub Copilot Integration:** Ask Copilot to generate an image for your markdown files or blog posts, and it will autonomously invoke the ImageGen tool to create, compress, and insert the image path.
+- **Native Agent Image Skill in VS Code:** Copilot can autonomously call ImageGen tools to generate and edit images during normal coding/chat flows.
+- **GitHub Copilot Integration:** Ask Copilot to generate an image for your markdown files or blog posts, and it will invoke the ImageGen tool to create, compress, and insert the image path.
 - **Image Editing from Chat:** Provide an existing image (workspace path, URL, data URL, or Markdown image snippet) plus an edit instruction, and Copilot can transform it with GenAI.
 - **Call Metrics for Agents:** Tool responses include provider call duration and per-image cost estimate so agents can reason about speed/cost tradeoffs.
 - **Multi-Provider Support:** Choose from six leading image generation models, each with different cost and quality tradeoffs.
-- **Manual Generation Panel:** A dedicated Webview UI to write prompts, choose a provider, adjust quality settings, and generate images manually.
+- **Manual Generation/Edit View:** A dedicated webview UI to write prompts, choose a provider, adjust settings, and generate or edit images manually.
 - **Automatic WebP Compression:** All generated images are processed via a WebAssembly (WASM) encoder and saved as highly optimized `.webp` files to keep your project lightweight and web-ready.
 - **Secure API Key Storage:** Your API keys are safely stored in your operating system's native credential manager (via VS Code SecretStorage), never in plain text configuration files.
 
@@ -70,11 +75,13 @@ ImageGen: Set API Key
 Select which provider key to configure, then paste your key into the secure input box. Repeat for each provider you want to use.
 Keys are stored securely using VS Code SecretStorage (OS credential vault), not in workspace files or settings.
 
-### 2. Using with GitHub Copilot
+### 2. Using with GitHub Copilot (Agent Workflow)
 Open GitHub Copilot Chat (`Ctrl+Alt+I`) and prompt the agent:
 > *"Write a short introduction for a blog post about TypeScript. Then use your image generation tool to create a futuristic header image for it."*
 
 Copilot will invoke the `#generateImage` tool, generate the image, save it as `.webp`, and return a Markdown image link plus call metrics (API duration and estimated cost).
+
+This is the core UVP: image generation is now a native tool in the agent workflow, not an external app or manual copy/paste step.
 
 ### 3. Editing Existing Images in Copilot Chat
 You can also transform an existing image in chat using the `#editImage` tool.
@@ -94,7 +101,7 @@ Current provider support for image editing:
 - ✅ OpenAI (GPT Image 1.5)
 - ❌ OpenRouter-backed models in this extension currently support text-to-image only
 
-### 4. Using the Manual Panel
+### 4. Using the Manual View
 Run the command `ImageGen: Open in Editor Panel` to launch the UI.
 
 - **Generate mode:** Select your provider, enter a detailed prompt, adjust WebP quality/aspect ratio, and click **Generate Image**.
