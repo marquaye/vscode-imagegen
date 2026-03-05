@@ -1,6 +1,7 @@
 import type { ImageEditOptions, ImageGenerationOptions, ImageProvider, RawImageData } from './types';
 import { aspectRatioToOpenAISize } from './types';
 import { fetchWithRetry } from '../utils/network';
+import { imageBufferFromProviderItem, throwProviderHttpError } from './httpHelpers';
 
 const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
 const OPENAI_IMAGE_EDIT_URL = 'https://api.openai.com/v1/images/edits';
@@ -31,33 +32,19 @@ export const openAIProvider: ImageProvider = {
     }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`OpenAI API error ${res.status}: ${text}`);
+      await throwProviderHttpError('OpenAI API error', res);
     }
 
     const json = (await res.json()) as {
       data?: { b64_json?: string; url?: string }[];
     };
 
-    const item = json?.data?.[0];
-    let rawBuffer: Buffer;
-
-    if (item?.b64_json) {
-      rawBuffer = Buffer.from(item.b64_json, 'base64');
-    } else if (item?.url) {
-      const imgRes = await fetchWithRetry(
-        item.url,
-        { signal: opts.signal },
-        { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs },
-      );
-      if (!imgRes.ok) {
-        throw new Error(`Failed to download image from OpenAI URL: ${imgRes.status}`);
-      }
-      const arrayBuffer = await imgRes.arrayBuffer();
-      rawBuffer = Buffer.from(arrayBuffer);
-    } else {
-      throw new Error('OpenAI API returned no image data.');
-    }
+    const rawBuffer = await imageBufferFromProviderItem(json?.data?.[0], {
+      signal: opts.signal,
+      requestTimeoutMs: opts.requestTimeoutMs,
+      downloadErrorPrefix: 'Failed to download image from OpenAI URL',
+      emptyErrorMessage: 'OpenAI API returned no image data.',
+    });
 
     return {
       mimeType: 'image/png',
@@ -88,33 +75,19 @@ export const openAIProvider: ImageProvider = {
     }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`OpenAI API edit error ${res.status}: ${text}`);
+      await throwProviderHttpError('OpenAI API edit error', res);
     }
 
     const json = (await res.json()) as {
       data?: { b64_json?: string; url?: string }[];
     };
 
-    const item = json?.data?.[0];
-    let rawBuffer: Buffer;
-
-    if (item?.b64_json) {
-      rawBuffer = Buffer.from(item.b64_json, 'base64');
-    } else if (item?.url) {
-      const imgRes = await fetchWithRetry(
-        item.url,
-        { signal: opts.signal },
-        { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs },
-      );
-      if (!imgRes.ok) {
-        throw new Error(`Failed to download edited image from OpenAI URL: ${imgRes.status}`);
-      }
-      const arrayBuffer = await imgRes.arrayBuffer();
-      rawBuffer = Buffer.from(arrayBuffer);
-    } else {
-      throw new Error('OpenAI API returned no edited image data.');
-    }
+    const rawBuffer = await imageBufferFromProviderItem(json?.data?.[0], {
+      signal: opts.signal,
+      requestTimeoutMs: opts.requestTimeoutMs,
+      downloadErrorPrefix: 'Failed to download edited image from OpenAI URL',
+      emptyErrorMessage: 'OpenAI API returned no edited image data.',
+    });
 
     return {
       mimeType: 'image/png',

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { getConfig } from './imageService';
+import { getConfig } from './image/config';
 import { getProvider } from './providers';
 import { getApiKeyForProvider } from './secrets';
 import { fetchWithRetry } from './utils/network';

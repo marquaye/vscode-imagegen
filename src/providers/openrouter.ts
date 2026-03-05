@@ -1,6 +1,7 @@
 import type { ImageGenerationOptions, ImageProvider, ProviderId, RawImageData } from './types';
 import { aspectRatioToOpenAISize } from './types';
 import { fetchWithRetry } from '../utils/network';
+import { imageBufferFromProviderItem, throwProviderHttpError } from './httpHelpers';
 
 const OPENROUTER_IMAGE_URL = 'https://openrouter.ai/api/v1/images/generations';
 
@@ -48,34 +49,19 @@ function makeOpenRouterProvider(
       }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`OpenRouter API error ${res.status}: ${text}`);
+        await throwProviderHttpError('OpenRouter API error', res);
       }
 
       const json = (await res.json()) as {
         data?: { b64_json?: string; url?: string }[];
       };
 
-      let rawBuffer: Buffer;
-
-      const item = json?.data?.[0];
-      if (item?.b64_json) {
-        rawBuffer = Buffer.from(item.b64_json, 'base64');
-      } else if (item?.url) {
-        // Some OpenRouter models return a URL instead of base64
-        const imgRes = await fetchWithRetry(
-          item.url,
-          { signal: opts.signal },
-          { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs },
-        );
-        if (!imgRes.ok) {
-          throw new Error(`Failed to download image from OpenRouter URL: ${imgRes.status}`);
-        }
-        const arrayBuffer = await imgRes.arrayBuffer();
-        rawBuffer = Buffer.from(arrayBuffer);
-      } else {
-        throw new Error('OpenRouter API returned no image data.');
-      }
+      const rawBuffer = await imageBufferFromProviderItem(json?.data?.[0], {
+        signal: opts.signal,
+        requestTimeoutMs: opts.requestTimeoutMs,
+        downloadErrorPrefix: 'Failed to download image from OpenRouter URL',
+        emptyErrorMessage: 'OpenRouter API returned no image data.',
+      });
 
       return {
         mimeType: 'image/png',

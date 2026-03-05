@@ -41,14 +41,10 @@ async function callGemini(
     }[];
   };
 
-  const parts = json?.candidates?.[0]?.content?.parts ?? [];
-  const imagePart = parts.find((p) => p.inlineData?.mimeType?.startsWith('image/'));
-
-  if (!imagePart?.inlineData) {
-    throw new Error('Gemini API returned no image data. Check your prompt and API key.');
-  }
-
-  const { mimeType, data: base64 } = imagePart.inlineData;
+  const { mimeType, data: base64 } = extractGeminiInlineImagePart(
+    json,
+    'Gemini API returned no image data. Check your prompt and API key.',
+  );
   const rawBuffer = Buffer.from(base64, 'base64');
 
   // Return raw buffer — pixel decoding is handled by imageService
@@ -108,20 +104,36 @@ async function editWithGemini(
     }[];
   };
 
-  const parts = json?.candidates?.[0]?.content?.parts ?? [];
-  const imagePart = parts.find((p) => p.inlineData?.mimeType?.startsWith('image/'));
-
-  if (!imagePart?.inlineData) {
-    throw new Error('Gemini API returned no edited image data.');
-  }
-
-  const { mimeType, data: base64 } = imagePart.inlineData;
+  const { mimeType, data: base64 } = extractGeminiInlineImagePart(
+    json,
+    'Gemini API returned no edited image data.',
+  );
   const rawBuffer = Buffer.from(base64, 'base64');
 
   return {
     mimeType,
     rawBuffer,
   };
+}
+
+function extractGeminiInlineImagePart(
+  json: {
+    candidates?: {
+      content?: {
+        parts?: { text?: string; inlineData?: { mimeType: string; data: string } }[];
+      };
+    }[];
+  },
+  emptyErrorMessage: string,
+): { mimeType: string; data: string } {
+  const parts = json?.candidates?.[0]?.content?.parts ?? [];
+  const imagePart = parts.find((p) => p.inlineData?.mimeType?.startsWith('image/'));
+
+  if (!imagePart?.inlineData) {
+    throw new Error(emptyErrorMessage);
+  }
+
+  return imagePart.inlineData;
 }
 
 export const geminiFlashProvider: ImageProvider = {

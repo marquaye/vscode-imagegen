@@ -34,16 +34,50 @@ async function runBuild(): Promise<void> {
   }
 }
 
+let buildInProgress = false;
+let rebuildQueued = false;
+
+async function queueBuild(): Promise<void> {
+  if (buildInProgress) {
+    rebuildQueued = true;
+    return;
+  }
+
+  buildInProgress = true;
+  try {
+    do {
+      rebuildQueued = false;
+      await runBuild();
+    } while (rebuildQueued);
+  } finally {
+    buildInProgress = false;
+  }
+}
+
 if (isWatch) {
   const { watch } = await import('fs');
-  await runBuild();
+  await queueBuild();
   console.log('Watching src/ for changes...');
-  watch('./src', { recursive: true }, async (_event, filename) => {
-    if (filename?.endsWith('.ts')) {
-      console.log(`  Changed: ${filename}`);
-      await runBuild();
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  watch('./src', { recursive: true }, (_event, filename) => {
+    if (!filename?.endsWith('.ts')) {
+      return;
     }
+
+    if (filename.includes('dist/') || filename.includes('dist\\')) {
+      return;
+    }
+
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    debounceTimer = setTimeout(() => {
+      console.log(`  Changed: ${filename}`);
+      void queueBuild();
+    }, 140);
   });
 } else {
-  await runBuild();
+  await queueBuild();
 }

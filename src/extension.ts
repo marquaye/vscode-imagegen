@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { initWasm } from './imageService';
+import { initWasm } from './image/wasm';
 import { promptAndStoreApiKey } from './secrets';
 import { EditImageTool, GenerateImageTool } from './tool';
 import { ImageGenPanel } from './webview/panel';
