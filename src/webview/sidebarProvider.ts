@@ -40,6 +40,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       generateNonce(),
       initialProvider,
       keyStatuses,
+      false,
     );
 
     // Push fresh key statuses whenever a secret is added/removed

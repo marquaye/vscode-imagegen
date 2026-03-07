@@ -21,11 +21,13 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 
 - **Native Agent Image Skill in VS Code:** Copilot can autonomously call ImageGen tools to generate and edit images during normal coding/chat flows.
 - **GitHub Copilot Integration:** Ask Copilot to generate an image for your markdown files or blog posts, and it will invoke the ImageGen tool to create, compress, and insert the image path.
+- **Temporary Agent Outputs:** Agents can optionally save disposable images into the OS temp folder instead of the workspace, which avoids leaving unused artifacts in your repo.
 - **Image Editing from Chat:** Provide an existing image (workspace path, URL, data URL, or Markdown image snippet) plus an edit instruction, and Copilot can transform it with GenAI.
 - **Call Metrics for Agents:** Tool responses include provider call duration and per-image cost estimate so agents can reason about speed/cost tradeoffs.
 - **Multi-Provider Support:** Choose from six leading image generation models, each with different cost and quality tradeoffs.
 - **Manual Generation/Edit View:** A dedicated webview UI to write prompts, choose a provider, adjust settings, and generate or edit images manually.
 - **Automatic WebP Compression:** All generated images are processed via a WebAssembly (WASM) encoder and saved as highly optimized `.webp` files to keep your project lightweight and web-ready.
+- **Embedded Prompt Metadata:** Saved `.webp` files include XMP metadata with the prompt, provider, aspect ratio, and generation timestamp by default, so downstream tools can inspect how an image was created.
 - **Secure API Key Storage:** Your API keys are safely stored in your operating system's native credential manager (via VS Code SecretStorage), never in plain text configuration files.
 
 ## Requirements
@@ -83,6 +85,8 @@ Copilot will invoke the `#generateImage` tool, generate the image, save it as `.
 
 This is the core UVP: image generation is now a native tool in the agent workflow, not an external app or manual copy/paste step.
 
+If you want a disposable output that should not remain in the repo, ask the agent to use `saveMode: "temporary"`. In that mode, the file is written under the OS temp directory instead of a workspace folder.
+
 ### 3. Editing Existing Images in Copilot Chat
 You can also transform an existing image in chat using the `#editImage` tool.
 
@@ -107,11 +111,15 @@ Run the command `ImageGen: Open in Editor Panel` to launch the UI.
 - **Generate mode:** Select your provider, enter a detailed prompt, adjust WebP quality/aspect ratio, and click **Generate Image**.
 - **Edit mode:** Switch **Mode** to **Edit existing image**, provide input image (path, URL, markdown image snippet, data URL, or upload a local file), add edit instructions, and click **Edit Image**.
 
+After a result appears in the editor panel, click **Inspect Metadata** to open the embedded prompt metadata for that output image.
+
 Once the preview appears, click **Insert into Active Editor** to place the Markdown link at your cursor.
 
 If no workspace folder is open, generated images are saved to a local fallback directory:
 - Windows: `%USERPROFILE%/Pictures/ImageGen` (or `%USERPROFILE%/ImageGen` if `Pictures` is unavailable)
 - macOS/Linux: `$HOME/Pictures/ImageGen` (or `$HOME/ImageGen` if `Pictures` is unavailable)
+
+In multi-root workspaces, persistent saves now target the workspace folder of the last active editor when possible, instead of always using the first workspace folder.
 
 ## Extension Settings
 
@@ -122,6 +130,23 @@ If no workspace folder is open, generated images are saved to a local fallback d
 | `imagegen.webpQuality` | `80` | WebP quality for Copilot tool (0–100) |
 | `imagegen.requestTimeoutMs` | `45000` | Per-request timeout in ms for provider API calls |
 | `imagegen.maxInputImageMB` | `12` | Max input image size in MB for edit operations |
+| `imagegen.embedPromptMetadata` | `true` | Embed prompt details as XMP metadata in saved WebP files |
+
+## Prompt Metadata
+
+By default, ImageGen writes XMP metadata into each saved `.webp` file with these fields:
+
+- Prompt text
+- Provider ID
+- Aspect ratio
+- Operation type (`imagegen` or `imageedit`)
+- Generation timestamp
+
+This makes it possible for another tool or LLM pipeline to inspect the image file itself and recover the original prompt context. If your prompts may contain secrets or internal text, disable `imagegen.embedPromptMetadata`.
+
+The metadata is stored in the WebP container, so tools need to read WebP XMP metadata specifically. An LLM cannot discover it on its own unless the surrounding application passes the file bytes or extracted metadata into the model.
+
+To inspect a saved image inside VS Code, run `ImageGen: Inspect Image Metadata` or right-click a `.webp` file in the Explorer and choose the same command. If a `.webp` file is already open in the editor, the command uses that file automatically.
 
 ## Extension Commands
 
@@ -130,6 +155,7 @@ If no workspace folder is open, generated images are saved to a local fallback d
 | `ImageGen: Set API Key` | Securely store or update an API key |
 | `ImageGen: Open in Editor Panel` | Open the manual image generation interface |
 | `ImageGen: Run Health Check` | Validate key presence, output directory write access, and provider endpoint reachability |
+| `ImageGen: Inspect Image Metadata` | Open the parsed prompt metadata embedded in a saved `.webp` file |
 
 ## Development
 

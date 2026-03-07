@@ -3,15 +3,19 @@ import { editAndSaveImage, generateAndSaveImage } from './imageService';
 import type { AspectRatio } from './providers/types';
 import { invokeImageTool, prepareImageToolInvocation } from './lmToolRunner';
 
+export type SaveMode = 'persistent' | 'temporary';
+
 export interface IGenerateImageInput {
   prompt: string;
   aspectRatio?: AspectRatio;
+  saveMode?: SaveMode;
 }
 
 export interface IEditImageInput {
   prompt: string;
   inputImage: string;
   aspectRatio?: AspectRatio;
+  saveMode?: SaveMode;
 }
 
 export class GenerateImageTool implements vscode.LanguageModelTool<IGenerateImageInput> {
@@ -32,7 +36,7 @@ export class GenerateImageTool implements vscode.LanguageModelTool<IGenerateImag
     options: vscode.LanguageModelToolInvocationOptions<IGenerateImageInput>,
     token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { prompt, aspectRatio } = options.input;
+    const { prompt, aspectRatio, saveMode } = options.input;
     return invokeImageTool(token, {
       progressMessage: 'Calling image generation API...',
       successVerb: 'generated',
@@ -43,6 +47,7 @@ export class GenerateImageTool implements vscode.LanguageModelTool<IGenerateImag
         generateAndSaveImage(this.context, {
           prompt,
           aspectRatio: aspectRatio ?? '16:9',
+          saveMode: saveMode ?? 'persistent',
           signal,
         }),
     });
@@ -67,7 +72,7 @@ export class EditImageTool implements vscode.LanguageModelTool<IEditImageInput> 
     options: vscode.LanguageModelToolInvocationOptions<IEditImageInput>,
     token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { prompt, inputImage, aspectRatio } = options.input;
+    const { prompt, inputImage, aspectRatio, saveMode } = options.input;
     return invokeImageTool(token, {
       progressMessage: 'Loading source image...',
       successVerb: 'edited',
@@ -79,6 +84,7 @@ export class EditImageTool implements vscode.LanguageModelTool<IEditImageInput> 
           prompt,
           inputImageSource: inputImage,
           aspectRatio: aspectRatio ?? '16:9',
+          saveMode: saveMode ?? 'persistent',
           signal,
         }),
     });

@@ -33,6 +33,11 @@ export interface OpenFileInEditorMessage {
   absolutePath: string;
 }
 
+export interface InspectMetadataMessage {
+  type: 'inspectMetadata';
+  absolutePath: string;
+}
+
 export interface SaveApiKeyMessage {
   type: 'saveApiKey';
   keyName: string;
@@ -49,5 +54,6 @@ export type WebviewMessage =
   | InsertMessage
   | RevealFileMessage
   | OpenFileInEditorMessage
+  | InspectMetadataMessage
   | SaveApiKeyMessage
   | AbortMessage;

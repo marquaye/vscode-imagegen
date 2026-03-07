@@ -14,6 +14,7 @@ export function getWebviewContent(
   nonce: string,
   initialProvider = 'gemini-3.1-flash-image-preview',
   keyStatuses: KeyStatuses = {},
+  showInspectMetadataAction = false,
 ): string {
   const csp =
     `default-src 'none'; ` +
@@ -492,6 +493,7 @@ export function getWebviewContent(
         <button id="insert-btn" class="action-card">⬆ Insert into Editor</button>
         <button id="reveal-btn" class="action-card">📂 Reveal File</button>
         <button id="open-in-editor-btn" class="action-card">🧭 Open File in VS Code</button>
+        ${showInspectMetadataAction ? '<button id="inspect-metadata-btn" class="action-card">🔎 Inspect Metadata</button>' : ''}
       </div>
     </div>
   </div>
@@ -530,6 +532,7 @@ export function getWebviewContent(
     const insertBtn = document.getElementById('insert-btn');
     const revealBtn = document.getElementById('reveal-btn');
     const openInEditorBtn = document.getElementById('open-in-editor-btn');
+    const inspectMetadataBtn = document.getElementById('inspect-metadata-btn');
     const statusEl = document.getElementById('status');
     const previewCt = document.getElementById('preview-container');
     const previewImg = document.getElementById('preview-img');
@@ -888,6 +891,12 @@ export function getWebviewContent(
     openInEditorBtn.addEventListener('click', () => {
       if (currentAbsolutePath) {
         vscode.postMessage({ type: 'openFileInEditor', absolutePath: currentAbsolutePath });
+      }
+    });
+
+    inspectMetadataBtn && inspectMetadataBtn.addEventListener('click', () => {
+      if (currentAbsolutePath) {
+        vscode.postMessage({ type: 'inspectMetadata', absolutePath: currentAbsolutePath });
       }
     });
 

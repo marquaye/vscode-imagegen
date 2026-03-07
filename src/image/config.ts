@@ -7,6 +7,7 @@ export interface ImageGenConfig {
   webpQuality: number;
   requestTimeoutMs: number;
   maxInputImageMB: number;
+  embedPromptMetadata: boolean;
 }
 
 export function getConfig(): ImageGenConfig {
@@ -23,5 +24,6 @@ export function getConfig(): ImageGenConfig {
     webpQuality: cfg.get<number>('webpQuality', 80),
     requestTimeoutMs: cfg.get<number>('requestTimeoutMs', 45000),
     maxInputImageMB: cfg.get<number>('maxInputImageMB', 12),
+    embedPromptMetadata: cfg.get<boolean>('embedPromptMetadata', true),
   };
 }

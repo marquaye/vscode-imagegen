@@ -13,6 +13,7 @@ import { writeOptimizedImage } from './image/outputWriter';
 import { assertWasmInitialized, encodeWebp } from './image/wasm';
 import { getApiKeyForProvider } from './secrets';
 import { ensureNotAborted } from './utils/network';
+import type { SaveMode } from './tool';
 
 // Local stand-in for the DOM ImageData shape expected by @jsquash/webp
 interface ImageDataLike {
@@ -57,6 +58,8 @@ export interface GenerateOptions {
   quality?: number;
   /** Override provider ID. Falls back to imagegen.provider setting. */
   providerId?: ProviderId;
+  /** Where to save the output image. */
+  saveMode?: SaveMode;
   signal?: AbortSignal;
 }
 
@@ -105,8 +108,10 @@ export async function generateAndSaveImage(
   return saveProviderImage({
     prompt: opts.prompt,
     providerId,
+    aspectRatio,
     config,
     quality,
+    saveMode: opts.saveMode ?? 'persistent',
     rawImage,
     startedAt,
     apiCallDurationMs,
@@ -162,8 +167,10 @@ export async function editAndSaveImage(
   return saveProviderImage({
     prompt: opts.prompt,
     providerId,
+    aspectRatio,
     config,
     quality,
+    saveMode: opts.saveMode ?? 'persistent',
     rawImage,
     startedAt,
     apiCallDurationMs,
@@ -175,8 +182,10 @@ export async function editAndSaveImage(
 interface SaveProviderImageArgs {
   prompt: string;
   providerId: ProviderId;
+  aspectRatio: string;
   config: ImageGenConfig;
   quality: number;
+  saveMode: SaveMode;
   rawImage: RawImageData;
   startedAt: number;
   apiCallDurationMs: number;
@@ -188,8 +197,10 @@ async function saveProviderImage(args: SaveProviderImageArgs): Promise<GenerateR
   const {
     prompt,
     providerId,
+    aspectRatio,
     config,
     quality,
+    saveMode,
     rawImage,
     startedAt,
     apiCallDurationMs,
@@ -220,6 +231,7 @@ async function saveProviderImage(args: SaveProviderImageArgs): Promise<GenerateR
   }
 
   validateDecodedDimensions(width, height);
+  const hasAlpha = imageHasTransparency(rgbaData);
 
   // ── 4. Encode to WebP via WASM ──────────────────────────────────────────────
   // ImageData is a DOM type not in Node.js lib — use our local stand-in shape
@@ -239,6 +251,15 @@ async function saveProviderImage(args: SaveProviderImageArgs): Promise<GenerateR
     filePrefix,
     new Uint8Array(webpBuffer),
     config.outputDirectory,
+    saveMode,
+    {
+      embedPromptMetadata: config.embedPromptMetadata,
+      providerId,
+      aspectRatio,
+      width,
+      height,
+      hasAlpha,
+    },
   );
   const estimatedCostUsd = PROVIDER_USD_PER_1K_IMAGES[providerId] / 1000;
   const totalDurationMs = Date.now() - startedAt;
@@ -267,4 +288,14 @@ function validateDecodedDimensions(width: number, height: number): void {
   if (pixels > MAX_DECODED_PIXEL_COUNT) {
     throw new Error('ImageGen: Image resolution is too large to process safely.');
   }
+}
+
+function imageHasTransparency(rgbaData: Uint8Array): boolean {
+  for (let index = 3; index < rgbaData.length; index += 4) {
+    if (rgbaData[index] !== 255) {
+      return true;
+    }
+  }
+
+  return false;
 }

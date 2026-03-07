@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.2.0 - 2026-03-07
+
+### Phase 7 - Prompt Metadata Inspection UX
+- Added a panel-only Inspect Metadata action for generated preview results so the editor panel can open embedded WebP prompt metadata directly.
+- Reused the metadata inspector with explicit file-path targeting instead of forcing users through the picker flow.
+
+### Phase 8 - Output Location Control
+- Added per-tool `saveMode` support so agents can choose between persistent project output and temporary OS-temp output.
+- Updated persistent save resolution in multi-root workspaces to prefer the last active editor's workspace folder instead of always using the first workspace folder.
+
 ### Phase 1 - Webview Host Consolidation
 - Added shared webview message contracts in `src/webview/messages.ts`.
 - Added shared host-side handlers in `src/webview/sharedHandlers.ts` for generate/edit/insert/save-key flows.

@@ -3,6 +3,7 @@ import { getConfig } from '../image/config';
 import { type KeyStatuses } from '../providers';
 import { readKeyStatuses } from '../secrets';
 import { logDetailedError, toUserErrorMessage } from '../utils/errors';
+import { inspectImageMetadataAtPath } from '../inspectMetadata';
 import { generateNonce, getWebviewContent } from './webviewContent';
 import type { WebviewMessage } from './messages';
 import {
@@ -37,6 +38,7 @@ export class ImageGenPanel {
       generateNonce(),
       initialProvider,
       keyStatuses,
+      true,
     );
 
     // Push fresh key statuses whenever a secret is added/removed
@@ -94,6 +96,8 @@ export class ImageGenPanel {
       );
     } else if (message.type === 'openFileInEditor') {
       void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(message.absolutePath));
+    } else if (message.type === 'inspectMetadata') {
+      await inspectImageMetadataAtPath(message.absolutePath);
     } else if (message.type === 'saveApiKey') {
       await handleSaveApiKeyMessage(
         this.context,

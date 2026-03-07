@@ -2,7 +2,7 @@
   "name": "vscode-imagegen",
   "displayName": "ImageGen",
   "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code with GitHub Copilot integration.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "license": "MIT",
   "publisher": "marquaye",
   "repository": {
@@ -67,6 +67,11 @@
         "command": "imagegen.openPanel",
         "title": "ImageGen: Open in Editor Panel",
         "icon": "$(open-preview)"
+      },
+      {
+        "command": "imagegen.inspectImageMetadata",
+        "title": "ImageGen: Inspect Image Metadata",
+        "icon": "$(json)"
       }
     ],
     "menus": {
@@ -84,6 +89,13 @@
         {
           "command": "imagegen.runHealthCheck",
           "when": "view == imagegen.sidebarView",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "imagegen.inspectImageMetadata",
+          "when": "resourceExtname == .webp",
           "group": "navigation"
         }
       ]
@@ -137,6 +149,11 @@
           "minimum": 1,
           "maximum": 100,
           "description": "Maximum allowed input image size in MB for image-edit operations."
+        },
+        "imagegen.embedPromptMetadata": {
+          "type": "boolean",
+          "default": true,
+          "description": "Embed the generation or edit prompt as XMP metadata inside saved WebP files. Disable this if prompts may contain sensitive text."
         }
       }
     },
@@ -161,6 +178,12 @@
               "description": "Optional aspect ratio for the image.",
               "enum": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
               "default": "16:9"
+            },
+            "saveMode": {
+              "type": "string",
+              "description": "Where to save the generated image. Use 'temporary' for disposable files outside the workspace, or omit for normal persistent project output.",
+              "enum": ["persistent", "temporary"],
+              "default": "persistent"
             }
           },
           "required": ["prompt"]
@@ -190,6 +213,12 @@
               "description": "Optional target aspect ratio for the edited output.",
               "enum": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
               "default": "16:9"
+            },
+            "saveMode": {
+              "type": "string",
+              "description": "Where to save the edited image. Use 'temporary' for disposable files outside the workspace, or omit for normal persistent project output.",
+              "enum": ["persistent", "temporary"],
+              "default": "persistent"
             }
           },
           "required": ["prompt", "inputImage"]
