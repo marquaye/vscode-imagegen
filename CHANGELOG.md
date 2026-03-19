@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Optimization
+- Reduced Copilot tool-definition context footprint by shortening language model tool metadata and simplifying input schema text.
+- Replaced verbose enum-heavy schema descriptions with compact validation patterns where possible to lower prompt/context overhead.
+- Decreased packaged extension size by excluding generated workspace images from the VSIX via .vscodeignore (about 2.18 MB down to about 0.97 MB).
+
+## 1.2.1 - 2026-03-13
+
+### Documentation
+- Removed provider pricing values from the README provider table to reduce confusion: this extension is completely free to use and MIT-licensed. Any charges come from the selected image model provider.
+- Simplified pricing-related wording in README feature and usage sections to keep docs focused on extension functionality.
+
 ## 1.2.0 - 2026-03-07
 
 ### Phase 7 - Prompt Metadata Inspection UX

@@ -8,14 +8,14 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 
 ## Supported Providers
 
-| # | Provider | Model | Cost |
-|---|----------|-------|------|
-| ⭐ | Google | Nano Banana 2 (Gemini 3.1 Flash Image Preview) | $67/1k imgs |
-| | Google | Nano Banana Pro (Gemini 3 Pro Image) | $134/1k imgs |
-| | OpenAI | GPT Image 1.5 (high) | $133/1k imgs |
-| | Black Forest Labs | FLUX.2 [max] (via OpenRouter) | $70/1k imgs |
-| | Black Forest Labs | FLUX.2 [pro] (via OpenRouter) | $30/1k imgs |
-| | ByteDance Seed | Seedream 4.0 (via OpenRouter) | $30/1k imgs |
+| # | Provider | Model |
+|---|----------|-------|
+| ⭐ | Google | Nano Banana 2 (Gemini 3.1 Flash Image Preview) |
+| | Google | Nano Banana Pro (Gemini 3 Pro Image) |
+| | OpenAI | GPT Image 1.5 (high) |
+| | Black Forest Labs | FLUX.2 [max] (via OpenRouter) |
+| | Black Forest Labs | FLUX.2 [pro] (via OpenRouter) |
+| | ByteDance Seed | Seedream 4.0 (via OpenRouter) |
 
 ## Features
 
@@ -23,8 +23,8 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 - **GitHub Copilot Integration:** Ask Copilot to generate an image for your markdown files or blog posts, and it will invoke the ImageGen tool to create, compress, and insert the image path.
 - **Temporary Agent Outputs:** Agents can optionally save disposable images into the OS temp folder instead of the workspace, which avoids leaving unused artifacts in your repo.
 - **Image Editing from Chat:** Provide an existing image (workspace path, URL, data URL, or Markdown image snippet) plus an edit instruction, and Copilot can transform it with GenAI.
-- **Call Metrics for Agents:** Tool responses include provider call duration and per-image cost estimate so agents can reason about speed/cost tradeoffs.
-- **Multi-Provider Support:** Choose from six leading image generation models, each with different cost and quality tradeoffs.
+- **Call Metrics for Agents:** Tool responses include provider call duration so agents can reason about performance tradeoffs.
+- **Multi-Provider Support:** Choose from six leading image generation models with different visual strengths.
 - **Manual Generation/Edit View:** A dedicated webview UI to write prompts, choose a provider, adjust settings, and generate or edit images manually.
 - **Automatic WebP Compression:** All generated images are processed via a WebAssembly (WASM) encoder and saved as highly optimized `.webp` files to keep your project lightweight and web-ready.
 - **Embedded Prompt Metadata:** Saved `.webp` files include XMP metadata with the prompt, provider, aspect ratio, and generation timestamp by default, so downstream tools can inspect how an image was created.
@@ -46,15 +46,13 @@ You need API keys for the providers you want to use:
 
 Both timeout and input-size limits are configurable via extension settings.
 
-## Getting a Free Gemini API Key (Google AI Studio)
+## Getting a Gemini API Key (Google AI Studio)
 
-Google offers a **free tier** for Gemini APIs through AI Studio — no credit card required to get started.
+Google AI Studio lets you create an API key for Gemini models.
 
 1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and sign in with a Google account.
 2. Click **Create API key**, then select an existing Google Cloud project or create a new one.
 3. Copy the generated key and store it in ImageGen via `ImageGen: Set API Key` → **Gemini**.
-
-**Free tier limits** (as of early 2026): The Gemini 2.0 Flash image generation model includes a generous free quota for personal and development use. Paid usage is billed per image once you exceed the quota or opt into a paid plan. Check the [AI Studio pricing page](https://ai.google.dev/pricing) for current limits.
 
 ## Getting an OpenRouter API Key
 
@@ -65,7 +63,7 @@ Google offers a **free tier** for Gemini APIs through AI Studio — no credit ca
 3. Give the key a name (e.g. `imagegen-vscode`), set an optional spend limit, and click **Create**.
 4. Copy the key and store it in ImageGen via `ImageGen: Set API Key` → **OpenRouter**.
 
-One OpenRouter key covers all OpenRouter-backed providers in ImageGen (FLUX.2 [max], FLUX.2 [pro], and Seedream 4.0). You can top up your credit balance from the [OpenRouter dashboard](https://openrouter.ai/credits) and set per-key spend limits to stay in control of costs.
+One OpenRouter key covers all OpenRouter-backed providers in ImageGen (FLUX.2 [max], FLUX.2 [pro], and Seedream 4.0).
 
 ## Usage
 
@@ -81,7 +79,7 @@ Keys are stored securely using VS Code SecretStorage (OS credential vault), not 
 Open GitHub Copilot Chat (`Ctrl+Alt+I`) and prompt the agent:
 > *"Write a short introduction for a blog post about TypeScript. Then use your image generation tool to create a futuristic header image for it."*
 
-Copilot will invoke the `#generateImage` tool, generate the image, save it as `.webp`, and return a Markdown image link plus call metrics (API duration and estimated cost).
+Copilot will invoke the `#generateImage` tool, generate the image, save it as `.webp`, and return a Markdown image link plus call metrics (API duration).
 
 This is the core UVP: image generation is now a native tool in the agent workflow, not an external app or manual copy/paste step.
 
@@ -173,21 +171,3 @@ bun run watch
 ```
 
 Press `F5` in VS Code to launch the Extension Development Host. The build step runs automatically via `vscode:prepublish`.
-
-## Release Notes
-
-### 1.0.1
-- Added manual **Generate/Edit** modes in the webview UI, including local file upload for edit input.
-- Added abort/cancel support for manual runs to stop in-flight provider requests.
-- Added Copilot `#editImage` tool and provider-side image editing support for Gemini + OpenAI.
-- Added provider request timeout handling and clearer timeout/cancellation error messaging.
-- Added OpenAI manual controls for output resolution and model quality.
-- Added fallback save location when no workspace is open (`Pictures/ImageGen` or `~/ImageGen`).
-- Added configurable safety limits: `imagegen.requestTimeoutMs` and `imagegen.maxInputImageMB`.
-
-### 1.0.0
-- Initial release.
-- Added Copilot Tool integration (`vscode.lm.registerTool`).
-- Added manual Webview panel for text-to-image generation.
-- Integrated WASM-based WebP compression (`@jsquash/webp`).
-- Multi-provider support: Google Gemini, OpenAI, BFL FLUX.2, Seedream 4.0.

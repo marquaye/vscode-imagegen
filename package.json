@@ -2,7 +2,7 @@
   "name": "vscode-imagegen",
   "displayName": "ImageGen",
   "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code with GitHub Copilot integration.",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "license": "MIT",
   "publisher": "marquaye",
   "repository": {
@@ -161,8 +161,8 @@
       {
         "name": "imagegen_generateImage",
         "displayName": "Generate Image",
-        "userDescription": "Generates an AI image from a text prompt using the configured provider (Gemini, OpenAI, FLUX, Seedream) and saves it as an optimized .webp file.",
-        "modelDescription": "Use this tool when the user asks to create, generate, draw, illustrate, or visualize any image — for example a blog post header, a documentation diagram, a logo concept, a banner, or any decorative illustration. The tool generates an image from a text description and returns a ready-to-paste Markdown image link (![alt](path.webp)) referencing the saved file.",
+        "userDescription": "Generate an image.",
+        "modelDescription": "Create image from text; return Markdown link.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "generateImage",
         "icon": "$(image)",
@@ -170,20 +170,15 @@
           "type": "object",
           "properties": {
             "prompt": {
-              "type": "string",
-              "description": "Detailed text description of the image to generate. Be specific about style, subject, colors, and mood."
+              "type": "string"
             },
             "aspectRatio": {
               "type": "string",
-              "description": "Optional aspect ratio for the image.",
-              "enum": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
-              "default": "16:9"
+              "pattern": "^(?:1:1|2:3|3:2|3:4|4:3|4:5|5:4|9:16|16:9|21:9)$"
             },
             "saveMode": {
               "type": "string",
-              "description": "Where to save the generated image. Use 'temporary' for disposable files outside the workspace, or omit for normal persistent project output.",
-              "enum": ["persistent", "temporary"],
-              "default": "persistent"
+              "pattern": "^(?:persistent|temporary)$"
             }
           },
           "required": ["prompt"]
@@ -192,8 +187,8 @@
       {
         "name": "imagegen_editImage",
         "displayName": "Edit Image",
-        "userDescription": "Edits an existing image using an instruction prompt and saves the result as an optimized .webp file.",
-        "modelDescription": "Use this tool when the user asks to modify, transform, retouch, or restyle an existing image. Accept an input image source (workspace path, absolute path, URL, data URL, or Markdown image snippet), apply the edit prompt with the configured provider, and return a ready-to-paste Markdown image link (![alt](path.webp)).",
+        "userDescription": "Edit an image.",
+        "modelDescription": "Edit image; return Markdown link.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "editImage",
         "icon": "$(wand)",
@@ -201,24 +196,18 @@
           "type": "object",
           "properties": {
             "prompt": {
-              "type": "string",
-              "description": "Detailed instruction describing how to modify the input image."
+              "type": "string"
             },
             "inputImage": {
-              "type": "string",
-              "description": "Image source to edit: workspace-relative path, absolute path, URL, data URL, or markdown image snippet ![alt](path)."
+              "type": "string"
             },
             "aspectRatio": {
               "type": "string",
-              "description": "Optional target aspect ratio for the edited output.",
-              "enum": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
-              "default": "16:9"
+              "pattern": "^(?:1:1|2:3|3:2|3:4|4:3|4:5|5:4|9:16|16:9|21:9)$"
             },
             "saveMode": {
               "type": "string",
-              "description": "Where to save the edited image. Use 'temporary' for disposable files outside the workspace, or omit for normal persistent project output.",
-              "enum": ["persistent", "temporary"],
-              "default": "persistent"
+              "pattern": "^(?:persistent|temporary)$"
             }
           },
           "required": ["prompt", "inputImage"]

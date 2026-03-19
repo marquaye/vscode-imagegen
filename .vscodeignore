@@ -5,6 +5,7 @@ build.ts
 tsconfig.json
 .gitignore
 scripts/**
+assets/images/**
 **/*.map
 # Exclude all of node_modules except the packages we ship (WASM + runtime deps)
 node_modules/**
