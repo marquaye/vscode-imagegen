@@ -2,7 +2,7 @@
   "name": "vscode-imagegen",
   "displayName": "ImageGen",
   "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code with GitHub Copilot integration.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "license": "MIT",
   "publisher": "marquaye",
   "repository": {
