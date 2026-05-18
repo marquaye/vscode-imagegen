@@ -6,92 +6,112 @@ import { imageBufferFromProviderItem, throwProviderHttpError } from './httpHelpe
 const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
 const OPENAI_IMAGE_EDIT_URL = 'https://api.openai.com/v1/images/edits';
 
-export const openAIProvider: ImageProvider = {
+type OpenAIImageModelId = 'gpt-image-1.5' | 'gpt-image-2';
+
+function createOpenAIProvider(config: {
+  id: OpenAIImageModelId;
+  displayName: string;
+  model: OpenAIImageModelId;
+}): ImageProvider {
+  return {
+    id: config.id,
+    displayName: config.displayName,
+    apiKeyName: 'openai-api-key',
+    apiKeyLabel: 'OpenAI API Key',
+
+    async generate(apiKey: string, opts: ImageGenerationOptions): Promise<RawImageData> {
+      const body = {
+        model: config.model,
+        prompt: opts.prompt,
+        size: opts.size ?? aspectRatioToOpenAISize(opts.aspectRatio),
+        quality: opts.outputQuality ?? 'high',
+        n: 1,
+      };
+
+      const res = await fetchWithRetry(OPENAI_IMAGE_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: opts.signal,
+      }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
+
+      if (!res.ok) {
+        await throwProviderHttpError('OpenAI API error', res);
+      }
+
+      const json = (await res.json()) as {
+        data?: { b64_json?: string; url?: string }[];
+      };
+
+      const rawBuffer = await imageBufferFromProviderItem(json?.data?.[0], {
+        signal: opts.signal,
+        requestTimeoutMs: opts.requestTimeoutMs,
+        downloadErrorPrefix: 'Failed to download image from OpenAI URL',
+        emptyErrorMessage: 'OpenAI API returned no image data.',
+      });
+
+      return {
+        mimeType: 'image/png',
+        rawBuffer,
+      };
+    },
+
+    async edit(apiKey: string, opts: ImageEditOptions): Promise<RawImageData> {
+      const form = new FormData();
+      form.append('model', config.model);
+      form.append('prompt', opts.prompt);
+      form.append('size', opts.size ?? aspectRatioToOpenAISize(opts.aspectRatio));
+      form.append('quality', opts.outputQuality ?? 'high');
+      form.append('n', '1');
+      form.append(
+        'image',
+        new Blob([opts.inputImage.rawBuffer], { type: opts.inputImage.mimeType }),
+        'input-image',
+      );
+
+      const res = await fetchWithRetry(OPENAI_IMAGE_EDIT_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: form,
+        signal: opts.signal,
+      }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
+
+      if (!res.ok) {
+        await throwProviderHttpError('OpenAI API edit error', res);
+      }
+
+      const json = (await res.json()) as {
+        data?: { b64_json?: string; url?: string }[];
+      };
+
+      const rawBuffer = await imageBufferFromProviderItem(json?.data?.[0], {
+        signal: opts.signal,
+        requestTimeoutMs: opts.requestTimeoutMs,
+        downloadErrorPrefix: 'Failed to download edited image from OpenAI URL',
+        emptyErrorMessage: 'OpenAI API returned no edited image data.',
+      });
+
+      return {
+        mimeType: 'image/png',
+        rawBuffer,
+      };
+    },
+  };
+}
+
+export const openAI15Provider = createOpenAIProvider({
   id: 'gpt-image-1.5',
   displayName: 'GPT Image 1.5 (high)',
-  apiKeyName: 'openai-api-key',
-  apiKeyLabel: 'OpenAI API Key',
+  model: 'gpt-image-1.5',
+});
 
-  async generate(apiKey: string, opts: ImageGenerationOptions): Promise<RawImageData> {
-    const body = {
-      model: 'gpt-image-1.5',
-      prompt: opts.prompt,
-      size: opts.size ?? aspectRatioToOpenAISize(opts.aspectRatio),
-      quality: opts.outputQuality ?? 'high',
-      n: 1,
-    };
-
-    const res = await fetchWithRetry(OPENAI_IMAGE_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: opts.signal,
-    }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
-
-    if (!res.ok) {
-      await throwProviderHttpError('OpenAI API error', res);
-    }
-
-    const json = (await res.json()) as {
-      data?: { b64_json?: string; url?: string }[];
-    };
-
-    const rawBuffer = await imageBufferFromProviderItem(json?.data?.[0], {
-      signal: opts.signal,
-      requestTimeoutMs: opts.requestTimeoutMs,
-      downloadErrorPrefix: 'Failed to download image from OpenAI URL',
-      emptyErrorMessage: 'OpenAI API returned no image data.',
-    });
-
-    return {
-      mimeType: 'image/png',
-      rawBuffer,
-    };
-  },
-
-  async edit(apiKey: string, opts: ImageEditOptions): Promise<RawImageData> {
-    const form = new FormData();
-    form.append('model', 'gpt-image-1.5');
-    form.append('prompt', opts.prompt);
-    form.append('size', opts.size ?? aspectRatioToOpenAISize(opts.aspectRatio));
-    form.append('quality', opts.outputQuality ?? 'high');
-    form.append('n', '1');
-    form.append(
-      'image',
-      new Blob([opts.inputImage.rawBuffer], { type: opts.inputImage.mimeType }),
-      'input-image',
-    );
-
-    const res = await fetchWithRetry(OPENAI_IMAGE_EDIT_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: form,
-      signal: opts.signal,
-    }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
-
-    if (!res.ok) {
-      await throwProviderHttpError('OpenAI API edit error', res);
-    }
-
-    const json = (await res.json()) as {
-      data?: { b64_json?: string; url?: string }[];
-    };
-
-    const rawBuffer = await imageBufferFromProviderItem(json?.data?.[0], {
-      signal: opts.signal,
-      requestTimeoutMs: opts.requestTimeoutMs,
-      downloadErrorPrefix: 'Failed to download edited image from OpenAI URL',
-      emptyErrorMessage: 'OpenAI API returned no edited image data.',
-    });
-
-    return {
-      mimeType: 'image/png',
-      rawBuffer,
-    };
-  },
-};
+export const openAI2Provider = createOpenAIProvider({
+  id: 'gpt-image-2',
+  displayName: 'GPT Image 2 (high)',
+  model: 'gpt-image-2',
+});

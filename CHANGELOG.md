@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Features
+- Added OpenAI GPT Image 2 provider support (`gpt-image-2`) for both generation and edit flows.
+- Kept GPT Image 1.5 support for backward compatibility and existing workspace settings.
+- Updated provider settings, health checks, and manual panel behavior so GPT Image 2 receives OpenAI-specific resolution/quality controls.
+
 ### Optimization
 - Reduced Copilot tool-definition context footprint by shortening language model tool metadata and simplifying input schema text.
 - Replaced verbose enum-heavy schema descriptions with compact validation patterns where possible to lower prompt/context overhead.

@@ -556,9 +556,22 @@ export function getWebviewContent(
     let currentRequestedResolution = null;
 
     const NANO_BANANA_2_PROVIDER_ID = 'gemini-3.1-flash-image-preview';
-    const OPENAI_PROVIDER_ID = 'gpt-image-1.5';
+    const OPENAI_2_PROVIDER_ID = 'gpt-image-2';
+    const OPENAI_15_PROVIDER_ID = 'gpt-image-1.5';
+    const OPENAI_PROVIDER_IDS = ['gpt-image-2', 'gpt-image-1.5'];
     const NANO_BANANA_2_RESOLUTIONS = ['1K', '2K', '0.5K'];
-    const OPENAI_RESOLUTIONS = ['auto', '1024x1024', '1536x1024', '1024x1536'];
+    const OPENAI_15_RESOLUTIONS = ['auto', '1024x1024', '1536x1024', '1024x1536'];
+    const OPENAI_2_RESOLUTIONS = [
+      'auto',
+      '1024x1024',
+      '1536x1024',
+      '1024x1536',
+      '2048x2048',
+      '2048x1152',
+      '1152x2048',
+      '3840x2160',
+      '2160x3840',
+    ];
     const NANO_BANANA_2_COSTS = {
       '0.5K': { tokens: 747, usd: 0.045 },
       '1K': { tokens: 1120, usd: 0.067 },
@@ -579,6 +592,22 @@ export function getWebviewContent(
 
     function isEditMode() {
       return operationEl.value === 'edit';
+    }
+
+    function isOpenAIProvider(providerId) {
+      return OPENAI_PROVIDER_IDS.includes(providerId);
+    }
+
+    function getOpenAIResolutions(providerId) {
+      if (providerId === OPENAI_2_PROVIDER_ID) {
+        return OPENAI_2_RESOLUTIONS;
+      }
+
+      if (providerId === OPENAI_15_PROVIDER_ID) {
+        return OPENAI_15_RESOLUTIONS;
+      }
+
+      return OPENAI_15_RESOLUTIONS;
     }
 
     function setViewMode() {
@@ -624,16 +653,16 @@ export function getWebviewContent(
     }
 
     function providerSupportsResolution(providerId) {
-      return providerId === NANO_BANANA_2_PROVIDER_ID || providerId === OPENAI_PROVIDER_ID;
+      return providerId === NANO_BANANA_2_PROVIDER_ID || isOpenAIProvider(providerId);
     }
 
     function providerSupportsOutputQuality(providerId) {
-      return providerId === OPENAI_PROVIDER_ID;
+      return isOpenAIProvider(providerId);
     }
 
     function setResolutionOptionsForProvider(providerId) {
-      const values = providerId === OPENAI_PROVIDER_ID
-        ? OPENAI_RESOLUTIONS
+      const values = isOpenAIProvider(providerId)
+        ? getOpenAIResolutions(providerId)
         : NANO_BANANA_2_RESOLUTIONS;
 
       const existing = resolutionEl.value;

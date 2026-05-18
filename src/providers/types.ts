@@ -44,6 +44,7 @@ export interface ImageProvider {
 export const PROVIDER_IDS = [
   'gemini-3.1-flash-image-preview',
   'gemini-3-pro-image-preview',
+  'gpt-image-2',
   'gpt-image-1.5',
   'flux-2-max',
   'flux-2-pro',
@@ -63,6 +64,7 @@ export type KeyStatuses = Partial<Record<ApiKeyName, boolean>>;
 export const PROVIDER_API_KEY_MAP: Record<ProviderId, ApiKeyName> = {
   'gemini-3.1-flash-image-preview': 'gemini-api-key',
   'gemini-3-pro-image-preview': 'gemini-api-key',
+  'gpt-image-2': 'openai-api-key',
   'gpt-image-1.5': 'openai-api-key',
   'flux-2-max': 'openrouter-api-key',
   'flux-2-pro': 'openrouter-api-key',
@@ -91,6 +93,7 @@ export interface ProviderMeta {
 export const PROVIDER_USD_PER_1K_IMAGES: Record<ProviderId, number> = {
   'gemini-3.1-flash-image-preview': 67,
   'gemini-3-pro-image-preview': 134,
+  'gpt-image-2': 211,
   'gpt-image-1.5': 133,
   'flux-2-max': 70,
   'flux-2-pro': 30,
@@ -109,6 +112,12 @@ export const PROVIDER_META: ProviderMeta[] = [
     label: 'Nano Banana Pro',    
     detail: 'Google · $134/1k imgs',
     apiKeyName: 'gemini-api-key',
+  },
+  {
+    id: 'gpt-image-2',
+    label: 'GPT Image 2',
+    detail: 'OpenAI · $211/1k imgs',
+    apiKeyName: 'openai-api-key',
   },
   {
     id: 'gpt-image-1.5',

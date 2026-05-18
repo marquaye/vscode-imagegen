@@ -109,7 +109,7 @@ function endpointRequest(providerId: string, apiKey: string): {
     };
   }
 
-  if (providerId === 'gpt-image-1.5') {
+  if (providerId.startsWith('gpt-image-')) {
     return {
       url: 'https://api.openai.com/v1/models',
       headers: { Authorization: `Bearer ${apiKey}` },

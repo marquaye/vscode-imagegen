@@ -8,14 +8,15 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 
 ## Supported Providers
 
-| # | Provider | Model |
-|---|----------|-------|
-| ⭐ | Google | Nano Banana 2 (Gemini 3.1 Flash Image Preview) |
-| | Google | Nano Banana Pro (Gemini 3 Pro Image) |
-| | OpenAI | GPT Image 1.5 (high) |
-| | Black Forest Labs | FLUX.2 [max] (via OpenRouter) |
-| | Black Forest Labs | FLUX.2 [pro] (via OpenRouter) |
-| | ByteDance Seed | Seedream 4.0 (via OpenRouter) |
+| Provider | Model |
+|----------|-------|
+| Google | Nano Banana 2 (Gemini 3.1 Flash Image Preview) |
+| Google | Nano Banana Pro (Gemini 3 Pro Image) |
+| OpenAI | GPT Image 2 (high) |
+| OpenAI | GPT Image 1.5 (high) |
+| Black Forest Labs | FLUX.2 [max] (via OpenRouter) |
+| Black Forest Labs | FLUX.2 [pro] (via OpenRouter) |
+| ByteDance Seed | Seedream 4.0 (via OpenRouter) |
 
 ## Features
 
@@ -24,7 +25,7 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 - **Temporary Agent Outputs:** Agents can optionally save disposable images into the OS temp folder instead of the workspace, which avoids leaving unused artifacts in your repo.
 - **Image Editing from Chat:** Provide an existing image (workspace path, URL, data URL, or Markdown image snippet) plus an edit instruction, and Copilot can transform it with GenAI.
 - **Call Metrics for Agents:** Tool responses include provider call duration so agents can reason about performance tradeoffs.
-- **Multi-Provider Support:** Choose from six leading image generation models with different visual strengths.
+- **Multi-Provider Support:** Choose from seven leading image generation models with different visual strengths.
 - **Manual Generation/Edit View:** A dedicated webview UI to write prompts, choose a provider, adjust settings, and generate or edit images manually.
 - **Automatic WebP Compression:** All generated images are processed via a WebAssembly (WASM) encoder and saved as highly optimized `.webp` files to keep your project lightweight and web-ready.
 - **Embedded Prompt Metadata:** Saved `.webp` files include XMP metadata with the prompt, provider, aspect ratio, and generation timestamp by default, so downstream tools can inspect how an image was created.
@@ -100,7 +101,7 @@ Accepted `inputImage` formats:
 
 Current provider support for image editing:
 - ✅ Gemini (Nano Banana 2 / Nano Banana Pro)
-- ✅ OpenAI (GPT Image 1.5)
+- ✅ OpenAI (GPT Image 2 / GPT Image 1.5)
 - ❌ OpenRouter-backed models in this extension currently support text-to-image only
 
 ### 4. Using the Manual View

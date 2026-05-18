@@ -109,6 +109,7 @@
           "enum": [
             "gemini-3.1-flash-image-preview",
             "gemini-3-pro-image-preview",
+            "gpt-image-2",
             "gpt-image-1.5",
             "flux-2-max",
             "flux-2-pro",
@@ -117,6 +118,7 @@
           "enumDescriptions": [
             "Google — Nano Banana 2 (Gemini 3.1 Flash Image Preview) · $67/1k imgs",
             "Google — Nano Banana Pro (Gemini 3 Pro Image) · $134/1k imgs",
+            "OpenAI — GPT Image 2 (high) · $211/1k imgs",
             "OpenAI — GPT Image 1.5 (high) · $133/1k imgs",
             "Black Forest Labs — FLUX.2 [max] · $70/1k imgs",
             "Black Forest Labs — FLUX.2 [pro] · $30/1k imgs",
