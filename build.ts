@@ -8,7 +8,7 @@ const isWatch = process.argv.includes('--watch');
 // from node_modules — this lets the Emscripten modules resolve their own .wasm
 // files using relative paths without any copy step.
 const config: BuildConfig = {
-  entrypoints: ['./src/extension.ts'],
+  entrypoints: ['./src/extension.ts', './src/mcp/server.ts'],
   outdir: './dist',
   target: 'node',
   format: 'cjs',
@@ -23,7 +23,7 @@ async function runBuild(): Promise<void> {
   const result = await build(config);
 
   if (result.success) {
-    console.log(`  Bundled → dist/extension.js`);
+    console.log('  Bundled → dist/extension.js and dist/mcp/server.js');
     console.log('  Build complete.\n');
   } else {
     console.error('  Build failed:');

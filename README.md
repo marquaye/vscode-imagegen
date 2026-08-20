@@ -131,6 +131,64 @@ In multi-root workspaces, persistent saves now target the workspace folder of th
 | `imagegen.maxInputImageMB` | `12` | Max input image size in MB for edit operations |
 | `imagegen.embedPromptMetadata` | `true` | Embed prompt details as XMP metadata in saved WebP files |
 
+## MCP Server (Claude and Other Agents)
+
+ImageGen includes a stdio MCP server for agents outside VS Code. It exposes two tools:
+
+- `generate_image`: Generate and save an optimized WebP image.
+- `edit_image`: Edit a local image path, URL, data URL, or Markdown image snippet, then save the optimized WebP result.
+
+Build the server from this repository:
+
+```bash
+bun install
+bun run build
+```
+
+The server gets provider credentials from environment variables rather than VS Code SecretStorage:
+
+| Provider | Environment variable |
+|----------|----------------------|
+| Gemini | `GEMINI_API_KEY` |
+| OpenAI | `OPENAI_API_KEY` |
+| OpenRouter | `OPENROUTER_API_KEY` |
+
+For Claude Desktop on Windows, add the following server to `%APPDATA%/Claude/claude_desktop_config.json`, adjusting paths and credentials for your machine:
+
+```json
+{
+	"mcpServers": {
+		"imagegen": {
+			"command": "node",
+			"args": ["D:/Projects/vscode-imagegen/dist/mcp/server.js"],
+			"env": {
+				"GEMINI_API_KEY": "your-key",
+				"IMAGEGEN_WORKSPACE_DIR": "D:/Projects/my-project"
+			}
+		}
+	}
+}
+```
+
+Claude Code can use the same executable through its MCP configuration:
+
+```json
+{
+	"mcpServers": {
+		"imagegen": {
+			"command": "node",
+			"args": ["D:/Projects/vscode-imagegen/dist/mcp/server.js"],
+			"env": {
+				"GEMINI_API_KEY": "your-key",
+				"IMAGEGEN_WORKSPACE_DIR": "D:/Projects/my-project"
+			}
+		}
+	}
+}
+```
+
+`IMAGEGEN_WORKSPACE_DIR` controls the base directory for persistent outputs and relative input-image paths. It defaults to the MCP process working directory. Optional configuration variables mirror the extension defaults: `IMAGEGEN_PROVIDER`, `IMAGEGEN_OUTPUT_DIRECTORY`, `IMAGEGEN_WEBP_QUALITY`, `IMAGEGEN_REQUEST_TIMEOUT_MS`, `IMAGEGEN_MAX_INPUT_IMAGE_MB`, and `IMAGEGEN_EMBED_PROMPT_METADATA` (`false` disables metadata). Use `saveMode: "temporary"` on either tool to write under the OS temporary directory instead.
+
 ## Prompt Metadata
 
 By default, ImageGen writes XMP metadata into each saved `.webp` file with these fields:

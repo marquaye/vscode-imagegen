@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+## 1.2.4 - 2026-08-20
+
 ### Features
+- Added a standalone stdio MCP server so Claude and other external agents can generate and edit optimized WebP images through ImageGen.
+- Added environment-based provider credentials and workspace/output configuration for the MCP server.
 - Added OpenAI GPT Image 2 provider support (`gpt-image-2`) for both generation and edit flows.
 - Kept GPT Image 1.5 support for backward compatibility and existing workspace settings.
 - Updated provider settings, health checks, and manual panel behavior so GPT Image 2 receives OpenAI-specific resolution/quality controls.

@@ -2,7 +2,7 @@
   "name": "vscode-imagegen",
   "displayName": "ImageGen",
   "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code with GitHub Copilot integration.",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "license": "MIT",
   "publisher": "marquaye",
   "repository": {
@@ -30,6 +30,9 @@
   ],
   "icon": "images/vs-code-imagegen-icon.png",
   "main": "./dist/extension.js",
+  "bin": {
+    "imagegen-mcp": "./dist/mcp/server.js"
+  },
   "activationEvents": [],
   "contributes": {
     "viewsContainers": {
@@ -221,13 +224,16 @@
     "build": "bun run build.ts",
     "watch": "bun run build.ts --watch",
     "test": "bun test",
+    "mcp": "node dist/mcp/server.js",
     "vscode:prepublish": "bun run build.ts --production",
     "package": "bunx @vscode/vsce package"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
     "@jsquash/webp": "^1.5.0",
     "jpeg-js": "^0.4.4",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/jpeg-js": "^0.3.7",
