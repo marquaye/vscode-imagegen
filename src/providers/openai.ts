@@ -6,7 +6,11 @@ import { imageBufferFromProviderItem, throwProviderHttpError } from './httpHelpe
 const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
 const OPENAI_IMAGE_EDIT_URL = 'https://api.openai.com/v1/images/edits';
 
-type OpenAIImageModelId = 'gpt-image-1.5' | 'gpt-image-2';
+type OpenAIImageModelId =
+  | 'gpt-image-1.5'
+  | 'gpt-image-2'
+  | 'gpt-image-2.5-flare'
+  | 'gpt-image-2.5-sunburst';
 
 function createOpenAIProvider(config: {
   id: OpenAIImageModelId;
@@ -114,4 +118,16 @@ export const openAI2Provider = createOpenAIProvider({
   id: 'gpt-image-2',
   displayName: 'GPT Image 2 (high)',
   model: 'gpt-image-2',
+});
+
+export const openAI25FlareProvider = createOpenAIProvider({
+  id: 'gpt-image-2.5-flare',
+  displayName: 'GPT Image 2.5 Flare',
+  model: 'gpt-image-2.5-flare',
+});
+
+export const openAI25SunburstProvider = createOpenAIProvider({
+  id: 'gpt-image-2.5-sunburst',
+  displayName: 'GPT Image 2.5 Sunburst',
+  model: 'gpt-image-2.5-sunburst',
 });

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.3.0 - 2026-09-11
+
+### Features
+- Added OpenAI GPT Image 2.5 support with both variants: `gpt-image-2.5-flare` (fast) and `gpt-image-2.5-sunburst` (precise edits). Both support generation and editing.
+- Added the GPT Image 2.5 `xhigh` and `max` quality tiers to the manual panel, alongside the existing `auto`/`low`/`medium`/`high` tiers.
+- Added Microsoft AI MAI-Image-2.6 support via OpenRouter: `mai-image-2.6` and `mai-image-2.6-flash`. Both support generation and editing.
+- Wired MAI models to OpenRouter's unified Image API (`/api/v1/images`), which takes a native `aspect_ratio` and reference images — making these the first OpenRouter-backed models in ImageGen that can edit, not just generate.
+
+### Changed
+- The manual panel now derives its resolution and quality controls from a per-model capability table instead of hardcoded provider ID checks, so each model only offers the sizes and quality tiers its API actually accepts.
+
 ## 1.2.4 - 2026-08-20
 
 ### Features

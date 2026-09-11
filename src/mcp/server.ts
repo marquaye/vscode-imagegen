@@ -47,7 +47,7 @@ interface EditRequest extends GenerateRequest {
   inputImage: string;
 }
 
-const server = new McpServer({ name: 'imagegen', version: '1.2.3' });
+const server = new McpServer({ name: 'imagegen', version: '1.3.0' });
 
 server.tool(
   'generate_image',

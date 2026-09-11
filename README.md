@@ -12,8 +12,12 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 |----------|-------|
 | Google | Nano Banana 2 (Gemini 3.1 Flash Image Preview) |
 | Google | Nano Banana Pro (Gemini 3 Pro Image) |
+| OpenAI | GPT Image 2.5 Flare |
+| OpenAI | GPT Image 2.5 Sunburst |
 | OpenAI | GPT Image 2 (high) |
 | OpenAI | GPT Image 1.5 (high) |
+| Microsoft AI | MAI-Image-2.6 (via OpenRouter) |
+| Microsoft AI | MAI-Image-2.6 Flash (via OpenRouter) |
 | Black Forest Labs | FLUX.2 [max] (via OpenRouter) |
 | Black Forest Labs | FLUX.2 [pro] (via OpenRouter) |
 | ByteDance Seed | Seedream 4.0 (via OpenRouter) |
@@ -25,7 +29,7 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 - **Temporary Agent Outputs:** Agents can optionally save disposable images into the OS temp folder instead of the workspace, which avoids leaving unused artifacts in your repo.
 - **Image Editing from Chat:** Provide an existing image (workspace path, URL, data URL, or Markdown image snippet) plus an edit instruction, and Copilot can transform it with GenAI.
 - **Call Metrics for Agents:** Tool responses include provider call duration so agents can reason about performance tradeoffs.
-- **Multi-Provider Support:** Choose from seven leading image generation models with different visual strengths.
+- **Multi-Provider Support:** Choose from eleven leading image generation models with different visual strengths.
 - **Manual Generation/Edit View:** A dedicated webview UI to write prompts, choose a provider, adjust settings, and generate or edit images manually.
 - **Automatic WebP Compression:** All generated images are processed via a WebAssembly (WASM) encoder and saved as highly optimized `.webp` files to keep your project lightweight and web-ready.
 - **Embedded Prompt Metadata:** Saved `.webp` files include XMP metadata with the prompt, provider, aspect ratio, and generation timestamp by default, so downstream tools can inspect how an image was created.
@@ -37,7 +41,7 @@ You need API keys for the providers you want to use:
 
 - **Google Gemini models** → [Google AI Studio](https://aistudio.google.com/app/apikey)
 - **OpenAI GPT Image** → [OpenAI Platform](https://platform.openai.com/api-keys)
-- **BFL FLUX.2 + Seedream** → [OpenRouter](https://openrouter.ai/keys) (one key covers all three)
+- **Microsoft MAI-Image + BFL FLUX.2 + Seedream** → [OpenRouter](https://openrouter.ai/keys) (one key covers all five)
 
 ## Performance & Resource Safety
 
@@ -57,14 +61,18 @@ Google AI Studio lets you create an API key for Gemini models.
 
 ## Getting an OpenRouter API Key
 
-[OpenRouter](https://openrouter.ai) is a unified API gateway that gives you access to hundreds of models — including the FLUX.2 and Seedream models supported by ImageGen — through a single key and a single billing account.
+[OpenRouter](https://openrouter.ai) is a unified API gateway that gives you access to hundreds of models — including the Microsoft MAI-Image, FLUX.2 and Seedream models supported by ImageGen — through a single key and a single billing account.
 
 1. Visit [openrouter.ai](https://openrouter.ai) and sign up or log in.
 2. Navigate to **Keys** (or go directly to [openrouter.ai/keys](https://openrouter.ai/keys)) and click **Create key**.
 3. Give the key a name (e.g. `imagegen-vscode`), set an optional spend limit, and click **Create**.
 4. Copy the key and store it in ImageGen via `ImageGen: Set API Key` → **OpenRouter**.
 
-One OpenRouter key covers all OpenRouter-backed providers in ImageGen (FLUX.2 [max], FLUX.2 [pro], and Seedream 4.0).
+One OpenRouter key covers all OpenRouter-backed providers in ImageGen (MAI-Image-2.6, MAI-Image-2.6 Flash, FLUX.2 [max], FLUX.2 [pro], and Seedream 4.0).
+
+### Why MAI-Image-2.6 goes through OpenRouter
+
+Microsoft's MAI-Image-2.6 models are reachable two ways: [Microsoft Foundry](https://ai.azure.com/catalog/models/MAI-Image-2.6?publisher=microsoft) (public preview) and OpenRouter. ImageGen uses OpenRouter, because Foundry access needs a per-resource endpoint URL, region, and API version on top of a separate key, while OpenRouter needs only the key you may already have. If you would rather bill MAI directly through Azure, open an issue — direct Foundry support is a config change, not a rewrite.
 
 ## Usage
 
@@ -101,14 +109,21 @@ Accepted `inputImage` formats:
 
 Current provider support for image editing:
 - ✅ Gemini (Nano Banana 2 / Nano Banana Pro)
-- ✅ OpenAI (GPT Image 2 / GPT Image 1.5)
-- ❌ OpenRouter-backed models in this extension currently support text-to-image only
+- ✅ OpenAI (GPT Image 2.5 Flare / GPT Image 2.5 Sunburst / GPT Image 2 / GPT Image 1.5)
+- ✅ Microsoft AI (MAI-Image-2.6 / MAI-Image-2.6 Flash)
+- ❌ FLUX.2 [max], FLUX.2 [pro], and Seedream 4.0 currently support text-to-image only
 
 ### 4. Using the Manual View
 Run the command `ImageGen: Open in Editor Panel` to launch the UI.
 
 - **Generate mode:** Select your provider, enter a detailed prompt, adjust WebP quality/aspect ratio, and click **Generate Image**.
 - **Edit mode:** Switch **Mode** to **Edit existing image**, provide input image (path, URL, markdown image snippet, data URL, or upload a local file), add edit instructions, and click **Edit Image**.
+
+The manual view adapts its controls to the selected model:
+
+- **Resolution** appears for Nano Banana 2 and the OpenAI GPT Image models. GPT Image 2.5 and GPT Image 2 additionally offer 2K and 4K sizes.
+- **Model Quality** appears for the OpenAI GPT Image models. GPT Image 2.5 Flare and Sunburst extend the usual `low` / `medium` / `high` tiers with `xhigh` and `max`, which trade cost and latency for detail — at 1024×1024 a `low` image is well under a cent while `max` runs about 21 cents. `high` is the default.
+- Models without size or quality controls (MAI-Image-2.6, FLUX.2, Seedream) are driven by the **Aspect Ratio** selector alone.
 
 After a result appears in the editor panel, click **Inspect Metadata** to open the embedded prompt metadata for that output image.
 

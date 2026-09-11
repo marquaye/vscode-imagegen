@@ -1,9 +1,24 @@
-import type { ImageGenerationOptions, ImageProvider, ProviderId, RawImageData } from './types';
+import type {
+  ImageEditOptions,
+  ImageGenerationOptions,
+  ImageProvider,
+  ProviderId,
+  RawImageData,
+} from './types';
 import { aspectRatioToOpenAISize } from './types';
 import { fetchWithRetry } from '../utils/network';
 import { imageBufferFromProviderItem, throwProviderHttpError } from './httpHelpers';
 
-const OPENROUTER_IMAGE_URL = 'https://openrouter.ai/api/v1/images/generations';
+/** Legacy OpenAI-compatible path, still served for the models already wired to it. */
+const OPENROUTER_LEGACY_IMAGE_URL = 'https://openrouter.ai/api/v1/images/generations';
+
+/** OpenRouter's unified Image API — the only path new image models are added to. */
+const OPENROUTER_IMAGE_API_URL = 'https://openrouter.ai/api/v1/images';
+
+const OPENROUTER_HEADERS = {
+  'HTTP-Referer': 'https://github.com/marquaye/vscode-imagegen',
+  'X-Title': 'VS Code ImageGen',
+} as const;
 
 /** Maps our internal provider ID to the OpenRouter model string */
 const OPENROUTER_MODEL_IDS: Record<string, string> = {
@@ -36,13 +51,12 @@ function makeOpenRouterProvider(
         n: 1,
       };
 
-      const res = await fetchWithRetry(OPENROUTER_IMAGE_URL, {
+      const res = await fetchWithRetry(OPENROUTER_LEGACY_IMAGE_URL, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://github.com/marquaye/vscode-imagegen',
-          'X-Title': 'VS Code ImageGen',
+          ...OPENROUTER_HEADERS,
         },
         body: JSON.stringify(body),
         signal: opts.signal,
@@ -75,6 +89,107 @@ function makeOpenRouterProvider(
   };
 }
 
+/** Maps our internal provider ID to the OpenRouter Image API model slug */
+const OPENROUTER_IMAGE_API_MODEL_IDS: Record<string, string> = {
+  'mai-image-2.6': 'microsoft/mai-image-2.6',
+  'mai-image-2.6-flash': 'microsoft/mai-image-2.6-flash',
+};
+
+interface OpenRouterImageApiResponse {
+  data?: { b64_json?: string; url?: string; media_type?: string }[];
+}
+
+/**
+ * Provider backed by OpenRouter's unified Image API (`/api/v1/images`).
+ *
+ * Unlike the legacy `/images/generations` path this endpoint takes a native
+ * `aspect_ratio` and accepts reference images, so these models support editing.
+ */
+function makeOpenRouterImageApiProvider(id: ProviderId, displayName: string): ImageProvider {
+  function requestBody(opts: ImageGenerationOptions): Record<string, unknown> {
+    const model = OPENROUTER_IMAGE_API_MODEL_IDS[id];
+    if (!model) {
+      throw new Error(`Unknown OpenRouter Image API model for provider ID: ${id}`);
+    }
+
+    return {
+      model,
+      prompt: opts.prompt,
+      aspect_ratio: opts.aspectRatio,
+      // The extension decodes PNG and JPEG only, so pin the output format.
+      output_format: 'png',
+      n: 1,
+    };
+  }
+
+  async function postImageRequest(
+    apiKey: string,
+    body: Record<string, unknown>,
+    opts: ImageGenerationOptions,
+    errorPrefix: string,
+  ): Promise<RawImageData> {
+    const res = await fetchWithRetry(OPENROUTER_IMAGE_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        ...OPENROUTER_HEADERS,
+      },
+      body: JSON.stringify(body),
+      signal: opts.signal,
+    }, { signal: opts.signal, requestTimeoutMs: opts.requestTimeoutMs });
+
+    if (!res.ok) {
+      await throwProviderHttpError(errorPrefix, res);
+    }
+
+    const json = (await res.json()) as OpenRouterImageApiResponse;
+    const item = json?.data?.[0];
+
+    const rawBuffer = await imageBufferFromProviderItem(item, {
+      signal: opts.signal,
+      requestTimeoutMs: opts.requestTimeoutMs,
+      downloadErrorPrefix: 'Failed to download image from OpenRouter URL',
+      emptyErrorMessage: 'OpenRouter API returned no image data.',
+    });
+
+    return {
+      mimeType: item?.media_type ?? 'image/png',
+      rawBuffer,
+    };
+  }
+
+  return {
+    id,
+    displayName,
+    apiKeyName: 'openrouter-api-key',
+    apiKeyLabel: 'OpenRouter API Key',
+
+    async generate(apiKey: string, opts: ImageGenerationOptions): Promise<RawImageData> {
+      return postImageRequest(apiKey, requestBody(opts), opts, 'OpenRouter API error');
+    },
+
+    async edit(apiKey: string, opts: ImageEditOptions): Promise<RawImageData> {
+      const dataUrl =
+        `data:${opts.inputImage.mimeType};base64,` + opts.inputImage.rawBuffer.toString('base64');
+
+      // The endpoint accepts up to 5 references; ImageGen edits a single source image.
+      const body = {
+        ...requestBody(opts),
+        input_references: [{ type: 'image_url', image_url: { url: dataUrl } }],
+      };
+
+      return postImageRequest(apiKey, body, opts, 'OpenRouter API edit error');
+    },
+  };
+}
+
 export const fluxMaxProvider = makeOpenRouterProvider('flux-2-max', 'FLUX.2 [max]');
 export const fluxProProvider = makeOpenRouterProvider('flux-2-pro', 'FLUX.2 [pro]');
 export const seedreamProvider = makeOpenRouterProvider('seedream-4.0', 'Seedream 4.0');
+
+export const maiImage26Provider = makeOpenRouterImageApiProvider('mai-image-2.6', 'MAI-Image-2.6');
+export const maiImage26FlashProvider = makeOpenRouterImageApiProvider(
+  'mai-image-2.6-flash',
+  'MAI-Image-2.6 Flash',
+);

@@ -2,7 +2,7 @@
   "name": "vscode-imagegen",
   "displayName": "ImageGen",
   "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code with GitHub Copilot integration.",
-  "version": "1.2.4",
+  "version": "1.3.0",
   "license": "MIT",
   "publisher": "marquaye",
   "repository": {
@@ -112,8 +112,12 @@
           "enum": [
             "gemini-3.1-flash-image-preview",
             "gemini-3-pro-image-preview",
+            "gpt-image-2.5-flare",
+            "gpt-image-2.5-sunburst",
             "gpt-image-2",
             "gpt-image-1.5",
+            "mai-image-2.6",
+            "mai-image-2.6-flash",
             "flux-2-max",
             "flux-2-pro",
             "seedream-4.0"
@@ -121,11 +125,15 @@
           "enumDescriptions": [
             "Google — Nano Banana 2 (Gemini 3.1 Flash Image Preview) · $67/1k imgs",
             "Google — Nano Banana Pro (Gemini 3 Pro Image) · $134/1k imgs",
+            "OpenAI — GPT Image 2.5 Flare (high, fast) · ~$60/1k imgs",
+            "OpenAI — GPT Image 2.5 Sunburst (high, precise edits) · ~$60/1k imgs",
             "OpenAI — GPT Image 2 (high) · $211/1k imgs",
             "OpenAI — GPT Image 1.5 (high) · $133/1k imgs",
-            "Black Forest Labs — FLUX.2 [max] · $70/1k imgs",
-            "Black Forest Labs — FLUX.2 [pro] · $30/1k imgs",
-            "ByteDance Seed — Seedream 4.0 · $30/1k imgs"
+            "Microsoft AI — MAI-Image-2.6 (via OpenRouter) · ~$50/1k imgs",
+            "Microsoft AI — MAI-Image-2.6 Flash (via OpenRouter) · ~$25/1k imgs",
+            "Black Forest Labs — FLUX.2 [max] (via OpenRouter) · $70/1k imgs",
+            "Black Forest Labs — FLUX.2 [pro] (via OpenRouter) · $30/1k imgs",
+            "ByteDance Seed — Seedream 4.0 (via OpenRouter) · $30/1k imgs"
           ],
           "description": "The image generation provider and model to use."
         },

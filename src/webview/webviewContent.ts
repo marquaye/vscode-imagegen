@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import {
   API_KEY_LABELS,
   ASPECT_RATIOS,
+  PROVIDER_CAPABILITIES,
   PROVIDER_META,
   PROVIDER_API_KEY_MAP,
   type ProviderId,
@@ -29,6 +30,7 @@ export function getWebviewContent(
     ),
   );
   const keyLabelsJson = JSON.stringify(API_KEY_LABELS);
+  const providerCapabilitiesJson = JSON.stringify(PROVIDER_CAPABILITIES);
 
   const providerOptions = PROVIDER_META.map(
     (m) =>
@@ -446,12 +448,7 @@ export function getWebviewContent(
 
       <div id="provider-quality-group" class="form-group hidden">
         <label for="provider-quality">Model Quality</label>
-        <select id="provider-quality">
-          <option value="auto">auto</option>
-          <option value="low">low</option>
-          <option value="medium">medium</option>
-          <option value="high" selected>high</option>
-        </select>
+        <select id="provider-quality"></select>
       </div>
 
       <div class="form-group">
@@ -506,6 +503,7 @@ export function getWebviewContent(
     const KEY_STATUSES = ${keyStatusesJson};
     const PROVIDER_KEY_MAP = ${providerKeyMapJson};
     const KEY_LABELS = ${keyLabelsJson};
+    const PROVIDER_CAPS = ${providerCapabilitiesJson};
 
     const setupOnlyEl = document.getElementById('setup-only');
     const generatorRootEl = document.getElementById('generator-root');
@@ -556,22 +554,7 @@ export function getWebviewContent(
     let currentRequestedResolution = null;
 
     const NANO_BANANA_2_PROVIDER_ID = 'gemini-3.1-flash-image-preview';
-    const OPENAI_2_PROVIDER_ID = 'gpt-image-2';
-    const OPENAI_15_PROVIDER_ID = 'gpt-image-1.5';
-    const OPENAI_PROVIDER_IDS = ['gpt-image-2', 'gpt-image-1.5'];
-    const NANO_BANANA_2_RESOLUTIONS = ['1K', '2K', '0.5K'];
-    const OPENAI_15_RESOLUTIONS = ['auto', '1024x1024', '1536x1024', '1024x1536'];
-    const OPENAI_2_RESOLUTIONS = [
-      'auto',
-      '1024x1024',
-      '1536x1024',
-      '1024x1536',
-      '2048x2048',
-      '2048x1152',
-      '1152x2048',
-      '3840x2160',
-      '2160x3840',
-    ];
+    const EMPTY_CAPS = { sizes: [], qualityTiers: [] };
     const NANO_BANANA_2_COSTS = {
       '0.5K': { tokens: 747, usd: 0.045 },
       '1K': { tokens: 1120, usd: 0.067 },
@@ -594,20 +577,8 @@ export function getWebviewContent(
       return operationEl.value === 'edit';
     }
 
-    function isOpenAIProvider(providerId) {
-      return OPENAI_PROVIDER_IDS.includes(providerId);
-    }
-
-    function getOpenAIResolutions(providerId) {
-      if (providerId === OPENAI_2_PROVIDER_ID) {
-        return OPENAI_2_RESOLUTIONS;
-      }
-
-      if (providerId === OPENAI_15_PROVIDER_ID) {
-        return OPENAI_15_RESOLUTIONS;
-      }
-
-      return OPENAI_15_RESOLUTIONS;
+    function capsFor(providerId) {
+      return PROVIDER_CAPS[providerId] || EMPTY_CAPS;
     }
 
     function setViewMode() {
@@ -653,17 +624,15 @@ export function getWebviewContent(
     }
 
     function providerSupportsResolution(providerId) {
-      return providerId === NANO_BANANA_2_PROVIDER_ID || isOpenAIProvider(providerId);
+      return capsFor(providerId).sizes.length > 0;
     }
 
     function providerSupportsOutputQuality(providerId) {
-      return isOpenAIProvider(providerId);
+      return capsFor(providerId).qualityTiers.length > 0;
     }
 
     function setResolutionOptionsForProvider(providerId) {
-      const values = isOpenAIProvider(providerId)
-        ? getOpenAIResolutions(providerId)
-        : NANO_BANANA_2_RESOLUTIONS;
+      const values = capsFor(providerId).sizes;
 
       const existing = resolutionEl.value;
       resolutionEl.innerHTML = values
@@ -673,6 +642,24 @@ export function getWebviewContent(
       if (values.includes(existing)) {
         resolutionEl.value = existing;
       }
+    }
+
+    function setQualityOptionsForProvider(providerId) {
+      const caps = capsFor(providerId);
+      const values = caps.qualityTiers;
+      if (values.length === 0) {
+        return;
+      }
+
+      const existing = providerQualityEl.value;
+      providerQualityEl.innerHTML = values
+        .map((value) => '<option value="' + value + '">' + value + '</option>')
+        .join('');
+
+      // Keep the user's tier across provider switches when the new model offers it.
+      providerQualityEl.value = values.includes(existing)
+        ? existing
+        : caps.defaultQualityTier || values[0];
     }
 
     function formatUsd(value) {
@@ -735,6 +722,9 @@ export function getWebviewContent(
 
     function updateProviderQualityVisibility() {
       const supported = providerSupportsOutputQuality(providerEl.value);
+      if (supported) {
+        setQualityOptionsForProvider(providerEl.value);
+      }
       providerQualityGroupEl.classList.toggle('hidden', !supported);
     }
 
