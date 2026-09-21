@@ -25,6 +25,7 @@ In short: ImageGen turns image generation into a native VS Code skill for both a
 ## Features
 
 - **Native Agent Image Skill in VS Code:** Copilot can autonomously call ImageGen tools to generate and edit images during normal coding/chat flows.
+- **Works with Claude and Other Agents:** A bundled MCP server exposes the same generate and edit tools to Claude Code, Claude Desktop, Cursor and anything else speaking MCP — one command sets it up.
 - **GitHub Copilot Integration:** Ask Copilot to generate an image for your markdown files or blog posts, and it will invoke the ImageGen tool to create, compress, and insert the image path.
 - **Temporary Agent Outputs:** Agents can optionally save disposable images into the OS temp folder instead of the workspace, which avoids leaving unused artifacts in your repo.
 - **Image Editing from Chat:** Provide an existing image (workspace path, URL, data URL, or Markdown image snippet) plus an edit instruction, and Copilot can transform it with GenAI.
@@ -148,10 +149,27 @@ In multi-root workspaces, persistent saves now target the workspace folder of th
 
 ## MCP Server (Claude and Other Agents)
 
-ImageGen includes a stdio MCP server for agents outside VS Code. It exposes two tools:
+VS Code's language model tools — the `#generateImage` and `#editImage` references — are only visible to GitHub Copilot Chat. Claude Code, Claude Desktop, Cursor and every other agent reach ImageGen through the bundled stdio MCP server instead. It exposes three tools:
 
 - `generate_image`: Generate and save an optimized WebP image.
 - `edit_image`: Edit a local image path, URL, data URL, or Markdown image snippet, then save the optimized WebP result.
+- `check_setup`: Report the active configuration, the available provider keys and the valid model ids. Useful when a call fails.
+
+### One-step setup
+
+Run **ImageGen: Connect External Agents (MCP)** from the Command Palette. The command:
+
+1. Exports the API keys you stored in VS Code to `~/.imagegen/credentials.json` (after you confirm), because an agent process cannot read SecretStorage.
+2. Picks a Node runtime — `node` from your `PATH`, or the VS Code binary in Node mode if you have no Node installed.
+3. Writes the server entry into the workspace `.mcp.json`. The confirmation offers **Use in All Projects**, which copies a `claude mcp add --scope user …` command instead.
+
+Then restart your agent. In the Claude extension, reload the VS Code window; Claude Code asks you once to approve the project's `imagegen` server. The tools then appear as `mcp__imagegen__generate_image` and `mcp__imagegen__edit_image`.
+
+**ImageGen: Disconnect External Agents (MCP)** deletes the exported credentials again. Your keys stay in SecretStorage, so the panel and the Copilot tools keep working.
+
+The generated `.mcp.json` contains no secrets, but it does contain absolute paths from your machine. Add it to `.gitignore` if your team members install ImageGen elsewhere.
+
+### Manual setup
 
 Build the server from this repository:
 
@@ -160,15 +178,7 @@ bun install
 bun run build
 ```
 
-The server gets provider credentials from environment variables rather than VS Code SecretStorage:
-
-| Provider | Environment variable |
-|----------|----------------------|
-| Gemini | `GEMINI_API_KEY` |
-| OpenAI | `OPENAI_API_KEY` |
-| OpenRouter | `OPENROUTER_API_KEY` |
-
-For Claude Desktop on Windows, add the following server to `%APPDATA%/Claude/claude_desktop_config.json`, adjusting paths and credentials for your machine:
+Then add it to your agent's MCP configuration — `.mcp.json` in the project root for Claude Code, or `%APPDATA%/Claude/claude_desktop_config.json` for Claude Desktop on Windows:
 
 ```json
 {
@@ -177,7 +187,7 @@ For Claude Desktop on Windows, add the following server to `%APPDATA%/Claude/cla
 			"command": "node",
 			"args": ["D:/Projects/vscode-imagegen/dist/mcp/server.js"],
 			"env": {
-				"GEMINI_API_KEY": "your-key",
+				"IMAGEGEN_EXTENSION_DIR": "D:/Projects/vscode-imagegen",
 				"IMAGEGEN_WORKSPACE_DIR": "D:/Projects/my-project"
 			}
 		}
@@ -185,24 +195,46 @@ For Claude Desktop on Windows, add the following server to `%APPDATA%/Claude/cla
 }
 ```
 
-Claude Code can use the same executable through its MCP configuration:
+### Context cost
 
-```json
-{
-	"mcpServers": {
-		"imagegen": {
-			"command": "node",
-			"args": ["D:/Projects/vscode-imagegen/dist/mcp/server.js"],
-			"env": {
-				"GEMINI_API_KEY": "your-key",
-				"IMAGEGEN_WORKSPACE_DIR": "D:/Projects/my-project"
-			}
-		}
-	}
-}
+Tool definitions sit in the agent's context for the whole session, so the schemas are kept lean: roughly 600 tokens for all three tools. Results are compact text rather than a JSON payload — path, dimensions, compression ratio, model, duration and estimated cost on three lines, ending with the Markdown link:
+
+```text
+Saved assets/images/imagegen-1758452000-a1b2c3.webp
+1536x1024 · 92 KB (from 1.4 MB) · gemini-3.1-flash-image-preview · 4.2s · ~$0.067
+![A red fox in deep snow at dawn](assets/images/imagegen-1758452000-a1b2c3.webp)
 ```
 
-`IMAGEGEN_WORKSPACE_DIR` controls the base directory for persistent outputs and relative input-image paths. It defaults to the MCP process working directory. Optional configuration variables mirror the extension defaults: `IMAGEGEN_PROVIDER`, `IMAGEGEN_OUTPUT_DIRECTORY`, `IMAGEGEN_WEBP_QUALITY`, `IMAGEGEN_REQUEST_TIMEOUT_MS`, `IMAGEGEN_MAX_INPUT_IMAGE_MB`, and `IMAGEGEN_EMBED_PROMPT_METADATA` (`false` disables metadata). Use `saveMode: "temporary"` on either tool to write under the OS temporary directory instead.
+Errors follow the same rule: they are returned as tool results with `isError`, and they state what to do — an unknown model id lists the valid ones, a missing key names the environment variable and the VS Code command that fixes it.
+
+### Credentials
+
+The server takes each provider key from the environment first, then from `~/.imagegen/credentials.json`:
+
+| Provider | Environment variable | Credentials file key |
+|----------|----------------------|----------------------|
+| Gemini | `GEMINI_API_KEY` | `gemini-api-key` |
+| OpenAI | `OPENAI_API_KEY` | `openai-api-key` |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter-api-key` |
+
+The file is written with owner-only permissions; on Windows it is protected by the permissions of your user profile directory rather than a POSIX file mode. Set `IMAGEGEN_CREDENTIALS_FILE` to keep it somewhere else.
+
+### Configuration
+
+The server resolves each setting from the environment first, then from the workspace `.vscode/settings.json`, then from the built-in default — so an agent generally produces the same output as the manual panel.
+
+The model is one of these too: a tool call may override it with the `provider` argument, but the id list is deliberately kept out of the tool schema — `check_setup` reports it, and an unknown id comes back as an error naming every valid one.
+
+| Environment variable | Workspace setting | Default |
+|----------------------|-------------------|---------|
+| `IMAGEGEN_PROVIDER` | `imagegen.provider` | `gemini-3.1-flash-image-preview` |
+| `IMAGEGEN_OUTPUT_DIRECTORY` | `imagegen.outputDirectory` | `assets/images` |
+| `IMAGEGEN_WEBP_QUALITY` | `imagegen.webpQuality` | `80` |
+| `IMAGEGEN_REQUEST_TIMEOUT_MS` | `imagegen.requestTimeoutMs` | `45000` |
+| `IMAGEGEN_MAX_INPUT_IMAGE_MB` | `imagegen.maxInputImageMB` | `12` |
+| `IMAGEGEN_EMBED_PROMPT_METADATA` | `imagegen.embedPromptMetadata` | `true` (`false` disables metadata) |
+
+Two variables have no setting counterpart: `IMAGEGEN_WORKSPACE_DIR` is the base directory for persistent outputs and relative input paths (it defaults to the agent's working directory), and `IMAGEGEN_EXTENSION_DIR` points at the ImageGen installation that holds the WebAssembly encoder. Pass `saveMode: "temporary"` to either tool to write under the OS temporary directory instead of the workspace.
 
 ## Prompt Metadata
 
@@ -228,6 +260,8 @@ To inspect a saved image inside VS Code, run `ImageGen: Inspect Image Metadata` 
 | `ImageGen: Open in Editor Panel` | Open the manual image generation interface |
 | `ImageGen: Run Health Check` | Validate key presence, output directory write access, and provider endpoint reachability |
 | `ImageGen: Inspect Image Metadata` | Open the parsed prompt metadata embedded in a saved `.webp` file |
+| `ImageGen: Connect External Agents (MCP)` | Register the MCP server so Claude and other non-Copilot agents can use ImageGen |
+| `ImageGen: Disconnect External Agents (MCP)` | Delete the credentials exported for external agents |
 
 ## Development
 

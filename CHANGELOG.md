@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+## 1.4.0 - 2026-09-21
+
+### Features
+- Added the command **ImageGen: Connect External Agents (MCP)**, which connects Claude Code, Claude Desktop, Cursor and other MCP agents in one step: it locates the bundled server, picks a working Node runtime, exports the stored API keys, and writes the `.mcp.json` entry (workspace scope) or copies a `claude mcp add --scope user` command (all projects).
+- Added the command **ImageGen: Disconnect External Agents (MCP)**, which deletes the exported credentials while the keys stay in VS Code SecretStorage.
+- Added a `check_setup` MCP tool that reports the resolved configuration and which provider credentials are available, so an agent can diagnose a failing setup without the user re-entering keys.
+- The MCP server now reads API keys from `~/.imagegen/credentials.json` when the matching environment variable is absent, so provider keys no longer have to be pasted into `.mcp.json`.
+- The MCP server now inherits `imagegen.*` values from the workspace `.vscode/settings.json`, so external agents use the same provider, output directory and quality as the panel. Environment variables still take precedence.
+
+### Changed
+- Reworked the MCP tools along the current MCP tool-design guidance: `registerTool` with titles and behaviour annotations, compact text results instead of JSON payloads (about a third of the previous context cost per call), and lean schemas that leave roughly 600 tokens of tool definitions in an agent's context.
+- Tool errors are now actionable: an unknown model id lists every valid id, a model that cannot edit lists the ones that can, and a missing input path names the directory it was resolved against.
+- The `provider` argument is a plain string instead of an eleven-value enum, which keeps the model list out of every session's context; `check_setup` reports the list on demand.
+- Only annotation hints that differ from the MCP defaults are sent, so the image tools declare `destructiveHint: false` and nothing else.
+- The WebAssembly encoder is compiled on first use rather than at startup, so sessions that never generate an image do not pay for it.
+- Rotating an API key in VS Code now refreshes the copy exported for external agents, instead of leaving them on the old key.
+- The connect command no longer asks where to register up front: it writes the workspace `.mcp.json` and offers the all-projects command afterwards.
+- MCP image results now include the pixel `width` and `height` of the saved file.
+- Missing-credential errors from the MCP server now name the environment variable, the credentials file and the VS Code command that fixes the problem.
+
+### Fixed
+- The MCP server located its WebAssembly encoder relative to the bundle only, which failed when an agent started it from another working directory. It now tries several roots and honours `IMAGEGEN_EXTENSION_DIR`.
+
 ## 1.3.0 - 2026-09-11
 
 ### Features

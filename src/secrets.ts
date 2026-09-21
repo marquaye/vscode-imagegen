@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { refreshExportedCredential } from './mcp/credentials';
 import {
   API_KEY_LABELS,
   API_KEY_NAMES,
@@ -26,12 +27,18 @@ export async function getApiKeyForProvider(
   return context.secrets.get(keyName);
 }
 
+/**
+ * Stores the key and, when it was previously exported for external agents,
+ * refreshes that copy so a rotated key does not keep failing outside VS Code.
+ * Returns whether the exported copy was updated.
+ */
 export async function storeApiKey(
   context: vscode.ExtensionContext,
   keyName: ApiKeyName,
   value: string,
-): Promise<void> {
+): Promise<boolean> {
   await context.secrets.store(keyName, value);
+  return refreshExportedCredential(keyName, value);
 }
 
 // ─── Interactive prompt ───────────────────────────────────────────────────────
@@ -77,9 +84,10 @@ export async function promptAndStoreApiKey(context: vscode.ExtensionContext): Pr
     return; // User cancelled
   }
 
-  await context.secrets.store(selected.keyName, value.trim());
+  const refreshedExport = await storeApiKey(context, selected.keyName, value.trim());
   void vscode.window.showInformationMessage(
-    `ImageGen: ${API_KEY_LABELS[selected.keyName]} saved securely.`,
+    `ImageGen: ${API_KEY_LABELS[selected.keyName]} saved securely.`
+      + (refreshedExport ? ' The copy used by external agents was updated too.' : ''),
   );
 }
 

@@ -1,8 +1,8 @@
 {
   "name": "vscode-imagegen",
   "displayName": "ImageGen",
-  "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code with GitHub Copilot integration.",
-  "version": "1.3.0",
+  "description": "Generate and insert optimized images using Gemini, OpenAI and more — directly in VS Code, with GitHub Copilot integration and an MCP server for Claude and other agents.",
+  "version": "1.4.0",
   "license": "MIT",
   "publisher": "marquaye",
   "repository": {
@@ -26,6 +26,8 @@
     "openai",
     "flux",
     "copilot",
+    "claude",
+    "mcp",
     "webp"
   ],
   "icon": "images/vs-code-imagegen-icon.png",
@@ -75,6 +77,16 @@
         "command": "imagegen.inspectImageMetadata",
         "title": "ImageGen: Inspect Image Metadata",
         "icon": "$(json)"
+      },
+      {
+        "command": "imagegen.connectExternalAgents",
+        "title": "ImageGen: Connect External Agents (MCP)",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "imagegen.revokeExternalAgents",
+        "title": "ImageGen: Disconnect External Agents (MCP)",
+        "icon": "$(debug-disconnect)"
       }
     ],
     "menus": {

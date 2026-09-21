@@ -7,6 +7,7 @@ import { SidebarProvider } from './webview/sidebarProvider';
 import { initEditorTracker } from './editorTracker';
 import { runHealthCheck } from './healthCheck';
 import { inspectImageMetadata } from './inspectMetadata';
+import { connectExternalAgents, revokeExportedCredentials } from './mcp/setup';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // ── 1. Track last active text editor (fixes Insert when webview has focus) ─
@@ -63,6 +64,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand('imagegen.inspectImageMetadata', async () => {
       await inspectImageMetadata();
+    }),
+  );
+
+  // ── 9. Commands: MCP bridge for agents other than Copilot ──────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('imagegen.connectExternalAgents', async () => {
+      await connectExternalAgents(context);
+    }),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('imagegen.revokeExternalAgents', async () => {
+      await revokeExportedCredentials();
     }),
   );
 }
